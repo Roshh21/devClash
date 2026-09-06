@@ -43,6 +43,22 @@ real authentication — everything visible is either static content or hand-writ
   tags — the other three show a lightweight "on the way" placeholder); and an Edit Profile modal
   (name + tagline fields) that shows a brief saving state and a "not actually saved" notice rather
   than persisting anything.
+- A Practice screen (`/app/practice`) built from one local catalogue (`lib/mockChallenges.js`): an
+  8-category grid with counts (clicking a category filters the list below), a search bar, a
+  category dropdown, and a difficulty dropdown — all three filters combine and update the visible
+  challenge list instantly, client-side. Each challenge card shows its difficulty, type, estimated
+  time, and a "Solved" badge where applicable, and links into the challenge player. Filtering down
+  to zero results shows a deliberate empty state with a "Clear filters" action rather than a blank
+  list.
+- A challenge player (`/app/challenge/:challengeId`) — its own full-screen layout without the
+  sidebar/topbar (matching the reference mockup's focus-mode screen), with a real Monaco editor
+  (syntax highlighting only, themed to match the app's light/dark palette) rather than a styled
+  textarea. Three panels: a Problem panel (difficulty, tags, description, worked examples, plus
+  Submissions/Discussion tabs that are placeholders for now), the editor with Run Code / Submit
+  buttons, and a Test Cases panel that switches to a Result tab on submit. A header timer chip
+  counts down visually. Clicking Run or Submit plays a scripted sequence — test rows flip from
+  "running" to "passed" one at a time — and Submit finishes with a mock "all tests passed" banner.
+  No code is actually executed anywhere.
 - Scroll-triggered and hover animations (Framer Motion), including a shared page-transition
   wrapper used by every route and a separate inner transition for content inside the app shell, so
   navigating between sidebar items animates just the content area, not the whole shell. Numeric
@@ -61,8 +77,14 @@ real authentication — everything visible is either static content or hand-writ
   `lib/mockProfile.js` — nothing is fetched, and the "loading" skeleton is a timer, not a real
   request.
 - Editing a profile doesn't save anything; the modal just closes and shows a notice.
-- Every other `/app/*` screen (Quick Play, Practice, Team Mode, Challenges, Rankings, Friends,
-  Statistics, Notifications, Settings) is still the same generic "coming soon" placeholder.
+- Every challenge in Practice opens the **same** mock problem body (a Two-Sum-style example) in
+  the player — only the title, difficulty, and completion badge come from the catalogue entry that
+  was clicked. Building genuinely unique content for every catalogue entry wasn't in scope here.
+- The challenge player's Run/Submit never execute real code — the pass/fail sequence is a fixed
+  timer-driven script, and it always ends in success. The language selector only offers
+  JavaScript.
+- Every other `/app/*` screen (Quick Play, Team Mode, Challenges, Rankings, Friends, Statistics,
+  Notifications, Settings) is still the generic "coming soon" placeholder.
 - The navbar's "Challenges", "Leaderboards", and "Pricing" links, and every footer link (About,
   Blog, Careers, Docs, Community, Support), are visual only — they don't go anywhere yet. Only
   "Features" (scrolls to the on-page feature strip), "Log in", and "Get Started" are functional.
@@ -84,21 +106,24 @@ real authentication — everything visible is either static content or hand-writ
 ```
 DevClash/
   frontend/            React app (implemented so far: public site, auth screens, app shell,
-                        dashboard, profile)
+                        dashboard, profile, practice discovery, challenge player)
     src/
       components/
         ui/            Theme-aware primitives: Button, Input, Checkbox, Badge, Card, Tabs, Modal,
-                        Skeleton, ThemeToggle, ProgressRing, Sparkline
+                        Skeleton, ThemeToggle, ProgressRing, Sparkline, Select, EmptyTabState
         layout/        Navbar, Footer, PageTransition, AppShell, Sidebar, Topbar
         landing/       Hero, FeatureStrip, CodeWindowMock (landing-page-only sections)
         dashboard/     ActionCard, StatCard, DashboardSkeleton
-        profile/       EditProfileModal, EmptyTabState
+        profile/       EditProfileModal
+        practice/      CategoryCard, ChallengeCard, PracticeSkeleton
+        challenge/     CodeEditor (Monaco wrapper), TimerChip, StatusPill
       pages/           LandingPage, StyleGuidePage, AuthPage, ComingSoonPage, StubPage,
-                        DashboardPage, ProfilePage
+                        DashboardPage, ProfilePage, PracticePage, ChallengePlayerPage
       store/           themeStore.js (Zustand — theme only, persisted to localStorage)
       lib/             motion.js (Framer Motion presets), useReducedMotion.js, useCountUp.js,
-                        useMockLoading.js, utils.js, navigation.js (shared nav-item list),
-                        mockUser.js, mockDashboard.js, mockProfile.js (hardcoded mock data)
+                        useMockLoading.js, useCountdown.js, utils.js, navigation.js,
+                        mockUser.js, mockDashboard.js, mockProfile.js, mockChallenges.js,
+                        mockChallengeDetail.js (hardcoded mock data)
       styles/          tokens.css (design tokens), globals.css
   backend/             Empty placeholder — not started
   DevClash-Bank/       Empty placeholder — not started
@@ -129,14 +154,27 @@ DevClash/
 - `ProgressRing` (animated SVG circular gauge) and `Sparkline` (animated mini bar chart) are
   generic primitives added for the dashboard's stat cards, built with plain SVG/CSS rather than a
   charting library since the visuals are simple. Both respect reduced motion.
+- `Select` is a themed wrapper around a native `<select>` (used for Practice's category/difficulty
+  filters and the challenge player's language picker) — kept native rather than a custom listbox
+  for built-in accessibility and keyboard support.
+- `EmptyTabState` started as a profile-only component and was promoted to `components/ui/` once
+  the challenge player needed the same "nothing here yet" treatment for its Submissions/Discussion/
+  Result tabs — one shared component instead of two near-duplicates.
+- The challenge player's code editor is a real Monaco instance (`@monaco-editor/react`), not a
+  styled textarea, per the plan's explicit call for it. Monaco loads from a CDN at runtime rather
+  than being bundled, so it adds negligible weight to the build; two small custom themes
+  (`devclash-dark` / `devclash-light`) tint its background to match the app's surface colors.
 - `useCountUp` animates a number counting up to its target value on mount (used for Rating, Win
   Rate, and Total Matches); `useMockLoading` simulates a brief load so every mock-data screen shows
-  its skeleton state before content "arrives," even though there's no real request yet.
+  its skeleton state before content "arrives," even though there's no real request yet;
+  `useCountdown` powers the challenge player's timer chip.
 - Reusable animation variants live in `src/lib/motion.js`: fade-in, slide-up, a staggered-children
   container, hover-lift, tap-scale, and the page-transition wrapper used by every route. All of
   them shrink to near-zero duration automatically when `prefers-reduced-motion` is set. The app
   shell additionally runs its own inner transition (keyed by the current sub-route) so switching
-  between sidebar items animates only the content area, not the sidebar/topbar around it.
+  between sidebar items animates only the content area, not the sidebar/topbar around it. The
+  challenge player deliberately sits outside that grouping — it has its own full-screen layout
+  (no sidebar), so it gets a normal full-page transition in and out instead.
 
 ## Routing
 
@@ -149,8 +187,9 @@ DevClash/
 | `/app` → `/app/dashboard` | Redirects into the app shell's default screen                |
 | `/app/dashboard`        | App shell — Dashboard (real mock content)                      |
 | `/app/profile`          | App shell — Profile (real mock content)                        |
+| `/app/practice`         | App shell — Practice discovery (real mock content)              |
+| `/app/challenge/:id`    | Full-screen challenge player (real mock content, own layout)    |
 | `/app/quick-play`       | App shell — Quick Play stub                                    |
-| `/app/practice`         | App shell — Practice stub                                      |
 | `/app/team-mode`        | App shell — Team Mode stub                                     |
 | `/app/challenges`       | App shell — Challenges stub                                    |
 | `/app/rankings`         | App shell — Rankings stub                                      |
@@ -165,6 +204,11 @@ DevClash/
 - No automated tests yet.
 - No backend calls anywhere — all content is hardcoded in components.
 - Icons and copy are illustrative rather than final production copy.
+- The challenge player's Monaco editor loads from a CDN at runtime (the standard way
+  `@monaco-editor/react` works without extra bundler config) — it needs the end user's browser to
+  have internet access the first time it loads. This couldn't be visually verified in this
+  environment since there's no browser available here; it was verified by installing/building the
+  package and confirming Monaco isn't pulled into the local bundle (see verification notes below).
 
 ## Running locally
 
@@ -191,3 +235,8 @@ with `npm run preview`.
   `setState` synchronously inside an effect for the reduced-motion case, which is redundant with
   the initial state and can cause an extra render — fixed by deriving the displayed value directly
   instead of syncing it through state.
+- `npm audit` flags a moderate DOMPurify advisory pulled in transitively by `monaco-editor`, which
+  is only installed as a peer dependency for local type-checking — confirmed neither our code nor
+  `@monaco-editor/react`/`@monaco-editor/loader` imports it directly, and the production bundle
+  size barely changed after adding the editor, consistent with Monaco itself loading from a CDN at
+  runtime rather than being bundled. No action needed, but worth knowing it's there.

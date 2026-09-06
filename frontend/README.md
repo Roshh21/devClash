@@ -12,6 +12,7 @@ screen is static or hand-written mock data.
 - Zustand (local UI state — currently just theme)
 - React Router
 - lucide-react (icons)
+- @monaco-editor/react (code editor in the challenge player)
 
 ## Getting started
 
@@ -49,6 +50,7 @@ Copy `.env.example` to `.env`. `VITE_API_BASE_URL` is a placeholder — nothing 
 
 See `../docs/IMPLEMENTATION.md` for the full, up-to-date routing table and implementation record.
 Quick reference: `/` (landing), `/styleguide` (design system), `/login` and `/signup` (shared auth
-card), `/app/dashboard` and `/app/profile` (real mock content), and the rest of `/app/*` (Quick
-Play, Practice, Team Mode, Challenges, Rankings, Friends, Statistics, Notifications, Settings —
-still placeholder screens).
+card), `/app/dashboard`, `/app/profile`, and `/app/practice` (real mock content),
+`/app/challenge/:id` (full-screen challenge player with a real Monaco editor), and the rest of
+`/app/*` (Quick Play, Team Mode, Challenges, Rankings, Friends, Statistics, Notifications,
+Settings — still placeholder screens).

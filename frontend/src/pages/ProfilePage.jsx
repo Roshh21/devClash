@@ -7,7 +7,7 @@ import Button from '../components/ui/Button';
 import Tabs from '../components/ui/Tabs';
 import Skeleton from '../components/ui/Skeleton';
 import EditProfileModal from '../components/profile/EditProfileModal';
-import EmptyTabState from '../components/profile/EmptyTabState';
+import EmptyTabState from '../components/ui/EmptyTabState';
 import { useMockLoading } from '../lib/useMockLoading';
 import { useCountUp } from '../lib/useCountUp';
 import { MOCK_USER } from '../lib/mockUser';
