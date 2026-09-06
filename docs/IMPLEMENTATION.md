@@ -26,15 +26,28 @@ real authentication — everything visible is either static content or hand-writ
   inline "coming soon" notice — nothing is created or persisted.
 - An authenticated app shell at `/app/*`: a sidebar (10 nav items) that collapses to icon-only on
   desktop and becomes a slide-in drawer with backdrop on mobile, a topbar with a (non-functional)
-  search field, a notification bell linking to the notifications screen, and an avatar menu
-  (Settings link + a "Log out" link that just returns to the homepage, since there's no real
-  session to end). The active nav item is highlighted, and every nav item routes to a themed
-  "coming soon" placeholder screen. A hardcoded mock user ("Roshni") stands in for a real logged-in
-  account.
+  search field, a notification bell linking to the notifications screen, and an avatar menu (View
+  Profile + Settings links, and a "Log out" link that just returns to the homepage, since there's
+  no real session to end). The active nav item is highlighted. A hardcoded mock user ("Roshni")
+  stands in for a real logged-in account.
+- A Dashboard screen (`/app/dashboard`) built entirely from one local mock-data file
+  (`lib/mockDashboard.js`): a greeting header with a quote, three action cards (Quick Play,
+  Practice, Team Mode) linking into the app shell, four animated stat cards (Rating, Win Rate with
+  a circular progress ring, Streak, Total Matches with a mini bar-sparkline — all counting up on
+  load), a Your Rank card with a progress bar toward the next league, a Recent Matches list, and a
+  Challenge of the Day card with a "Start Challenge" button. A skeleton placeholder shows for a
+  moment before the mock data "arrives."
+- A Profile screen (`/app/profile`, reachable from the sidebar's user card or the avatar menu):
+  header with avatar, name, league/rating, and tagline; an Overview / Statistics / Match History /
+  Achievements tab group (only Overview has real mock content — stat tiles and favorite-category
+  tags — the other three show a lightweight "on the way" placeholder); and an Edit Profile modal
+  (name + tagline fields) that shows a brief saving state and a "not actually saved" notice rather
+  than persisting anything.
 - Scroll-triggered and hover animations (Framer Motion), including a shared page-transition
   wrapper used by every route and a separate inner transition for content inside the app shell, so
-  navigating between sidebar items animates just the content area, not the whole shell. Everything
-  falls back to little/no animation when the browser's reduced-motion preference is on.
+  navigating between sidebar items animates just the content area, not the whole shell. Numeric
+  stats count up on load and progress rings/bars animate to their value. Everything falls back to
+  little/no animation when the browser's reduced-motion preference is on.
 - A fully responsive layout from small mobile widths up through desktop everywhere above.
 
 ### Placeholder / not real yet
@@ -44,9 +57,12 @@ real authentication — everything visible is either static content or hand-writ
 - The `/app/*` shell is a standalone area reachable only by typing the URL — it is intentionally
   **not** linked from `/login` or `/signup` yet, since connecting real auth to the app shell is
   later work. The mock "Roshni" user is hardcoded, not read from anywhere.
-- Every `/app/*` screen (Dashboard, Quick Play, Practice, Team Mode, Challenges, Rankings, Friends,
-  Statistics, Notifications, Settings) is the same generic "coming soon" placeholder — none of
-  them have real content yet.
+- Dashboard and Profile show fixed mock numbers from `lib/mockDashboard.js` and
+  `lib/mockProfile.js` — nothing is fetched, and the "loading" skeleton is a timer, not a real
+  request.
+- Editing a profile doesn't save anything; the modal just closes and shows a notice.
+- Every other `/app/*` screen (Quick Play, Practice, Team Mode, Challenges, Rankings, Friends,
+  Statistics, Notifications, Settings) is still the same generic "coming soon" placeholder.
 - The navbar's "Challenges", "Leaderboards", and "Pricing" links, and every footer link (About,
   Blog, Careers, Docs, Community, Support), are visual only — they don't go anywhere yet. Only
   "Features" (scrolls to the on-page feature strip), "Log in", and "Get Started" are functional.
@@ -67,17 +83,22 @@ real authentication — everything visible is either static content or hand-writ
 
 ```
 DevClash/
-  frontend/            React app (implemented so far: public site, auth screens, app shell)
+  frontend/            React app (implemented so far: public site, auth screens, app shell,
+                        dashboard, profile)
     src/
       components/
         ui/            Theme-aware primitives: Button, Input, Checkbox, Badge, Card, Tabs, Modal,
-                        Skeleton, ThemeToggle
+                        Skeleton, ThemeToggle, ProgressRing, Sparkline
         layout/        Navbar, Footer, PageTransition, AppShell, Sidebar, Topbar
         landing/       Hero, FeatureStrip, CodeWindowMock (landing-page-only sections)
-      pages/           LandingPage, StyleGuidePage, AuthPage, ComingSoonPage, StubPage
+        dashboard/     ActionCard, StatCard, DashboardSkeleton
+        profile/       EditProfileModal, EmptyTabState
+      pages/           LandingPage, StyleGuidePage, AuthPage, ComingSoonPage, StubPage,
+                        DashboardPage, ProfilePage
       store/           themeStore.js (Zustand — theme only, persisted to localStorage)
-      lib/             motion.js (Framer Motion presets), useReducedMotion.js, utils.js,
-                        navigation.js (shared nav-item list), mockUser.js (hardcoded mock account)
+      lib/             motion.js (Framer Motion presets), useReducedMotion.js, useCountUp.js,
+                        useMockLoading.js, utils.js, navigation.js (shared nav-item list),
+                        mockUser.js, mockDashboard.js, mockProfile.js (hardcoded mock data)
       styles/          tokens.css (design tokens), globals.css
   backend/             Empty placeholder — not started
   DevClash-Bank/       Empty placeholder — not started
@@ -105,6 +126,12 @@ DevClash/
   addition to its left `icon` slot.
 - `Checkbox` is a small themed primitive added alongside the others for "remember me" / terms
   agreement — same border/accent tokens as everything else.
+- `ProgressRing` (animated SVG circular gauge) and `Sparkline` (animated mini bar chart) are
+  generic primitives added for the dashboard's stat cards, built with plain SVG/CSS rather than a
+  charting library since the visuals are simple. Both respect reduced motion.
+- `useCountUp` animates a number counting up to its target value on mount (used for Rating, Win
+  Rate, and Total Matches); `useMockLoading` simulates a brief load so every mock-data screen shows
+  its skeleton state before content "arrives," even though there's no real request yet.
 - Reusable animation variants live in `src/lib/motion.js`: fade-in, slide-up, a staggered-children
   container, hover-lift, tap-scale, and the page-transition wrapper used by every route. All of
   them shrink to near-zero duration automatically when `prefers-reduced-motion` is set. The app
@@ -120,7 +147,8 @@ DevClash/
 | `/login`                | Auth card, Log In tab active                                   |
 | `/signup`               | Auth card, Sign Up tab active                                  |
 | `/app` → `/app/dashboard` | Redirects into the app shell's default screen                |
-| `/app/dashboard`        | App shell — Dashboard stub                                     |
+| `/app/dashboard`        | App shell — Dashboard (real mock content)                      |
+| `/app/profile`          | App shell — Profile (real mock content)                        |
 | `/app/quick-play`       | App shell — Quick Play stub                                    |
 | `/app/practice`         | App shell — Practice stub                                      |
 | `/app/team-mode`        | App shell — Team Mode stub                                     |
@@ -159,3 +187,7 @@ with `npm run preview`.
   variants reading from the shared tokens, and for Framer Motion/Tailwind conflicts (e.g. a
   static `rotate-*` class would be silently overridden by an animated `transform`, so rotation is
   set via the motion values instead wherever a component is also animated).
+- The linter also caught a real issue on this pass: `ProgressRing` and `useCountUp` were calling
+  `setState` synchronously inside an effect for the reduced-motion case, which is redundant with
+  the initial state and can cause an extra render — fixed by deriving the displayed value directly
+  instead of syncing it through state.

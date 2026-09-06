@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, ChevronDown, LogOut, Menu, Search, Settings } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, Menu, Search, Settings, UserRound } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
 import { MOCK_USER } from '../../lib/mockUser';
 import { cn } from '../../lib/utils';
@@ -70,6 +70,13 @@ export default function Topbar({ onOpenMobileNav }) {
                   transition={{ duration: 0.15 }}
                   className="absolute right-0 z-20 mt-2 w-48 rounded-xl border border-glass bg-bg-elevated p-1.5 shadow-glass backdrop-blur-glass"
                 >
+                  <NavLink
+                    to="profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary transition-colors hover:bg-surface hover:text-primary"
+                  >
+                    <UserRound size={15} /> View Profile
+                  </NavLink>
                   <NavLink
                     to="settings"
                     onClick={() => setMenuOpen(false)}

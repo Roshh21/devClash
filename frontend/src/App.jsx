@@ -7,6 +7,8 @@ import StyleGuidePage from './pages/StyleGuidePage';
 import AuthPage from './pages/AuthPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import StubPage from './pages/StubPage';
+import DashboardPage from './pages/DashboardPage';
+import ProfilePage from './pages/ProfilePage';
 import { NAV_ITEMS } from './lib/navigation';
 
 // Routes inside the same group don't retrigger the outer page-fade
@@ -68,9 +70,14 @@ export default function App() {
           }
         >
           <Route index element={<Navigate to="dashboard" replace />} />
-          {NAV_ITEMS.map((item) => (
-            <Route key={item.id} path={item.path} element={<StubPage {...item} />} />
-          ))}
+          <Route path="profile" element={<ProfilePage />} />
+          {NAV_ITEMS.map((item) =>
+            item.id === 'dashboard' ? (
+              <Route key={item.id} path={item.path} element={<DashboardPage />} />
+            ) : (
+              <Route key={item.id} path={item.path} element={<StubPage {...item} />} />
+            )
+          )}
         </Route>
 
         <Route

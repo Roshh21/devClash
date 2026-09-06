@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Code2 } from 'lucide-react';
 import { NAV_ITEMS } from '../../lib/navigation';
 import { MOCK_USER } from '../../lib/mockUser';
@@ -38,7 +38,15 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onNavigat
       </nav>
 
       <div className={cn('border-t border-glass p-3', collapsed && 'flex justify-center')}>
-        <div className={cn('flex items-center gap-3 rounded-xl px-2 py-2', !collapsed && 'bg-surface')}>
+        <Link
+          to="profile"
+          onClick={onNavigate}
+          title={collapsed ? MOCK_USER.name : undefined}
+          className={cn(
+            'flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-strong',
+            !collapsed && 'bg-surface'
+          )}
+        >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-accent-contrast">
             {MOCK_USER.initials}
           </span>
@@ -48,7 +56,7 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onNavigat
               <p className="truncate text-xs text-secondary">{MOCK_USER.league}</p>
             </div>
           )}
-        </div>
+        </Link>
       </div>
 
       {onToggleCollapse && (
