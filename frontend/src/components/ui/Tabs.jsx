@@ -2,12 +2,14 @@ import { useId, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
 
-export default function Tabs({ tabs, defaultTab, onChange, className }) {
+export default function Tabs({ tabs, active: controlledActive, defaultTab, onChange, className }) {
   const id = useId();
-  const [active, setActive] = useState(defaultTab ?? tabs[0]?.id);
+  const [internalActive, setInternalActive] = useState(defaultTab ?? tabs[0]?.id);
+  const isControlled = controlledActive !== undefined;
+  const active = isControlled ? controlledActive : internalActive;
 
   function handleClick(tabId) {
-    setActive(tabId);
+    if (!isControlled) setInternalActive(tabId);
     onChange?.(tabId);
   }
 

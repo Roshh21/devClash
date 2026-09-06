@@ -47,12 +47,7 @@ Copy `.env.example` to `.env`. `VITE_API_BASE_URL` is a placeholder — nothing 
 
 ## Routes
 
-| Path          | Screen                       |
-| ------------- | ----------------------------- |
-| `/`           | Landing page                  |
-| `/styleguide` | Design system reference       |
-| `/signup`     | Placeholder ("coming soon")   |
-| `/login`      | Placeholder ("coming soon")   |
-| anything else | Placeholder ("coming soon")   |
-
-See `../docs/IMPLEMENTATION.md` for the full implementation record.
+See `../docs/IMPLEMENTATION.md` for the full, up-to-date routing table and implementation record.
+Quick reference: `/` (landing), `/styleguide` (design system), `/login` and `/signup` (shared auth
+card), `/app/*` (sidebar app shell — Dashboard, Quick Play, Practice, Team Mode, Challenges,
+Rankings, Friends, Statistics, Notifications, Settings, all placeholder screens for now).

@@ -36,6 +36,9 @@ export default {
         '2xl': '1.25rem',
         '3xl': '1.75rem',
       },
+      transitionTimingFunction: {
+        standard: 'cubic-bezier(0.4, 0, 0.2, 1)',
+      },
       maxWidth: {
         '7xl': '80rem',
       },

@@ -24,6 +24,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Private question bank — NEVER commit to main repo
-DevClash-Bank/
