@@ -59,6 +59,20 @@ real authentication — everything visible is either static content or hand-writ
   counts down visually. Clicking Run or Submit plays a scripted sequence — test rows flip from
   "running" to "passed" one at a time — and Submit finishes with a mock "all tests passed" banner.
   No code is actually executed anywhere.
+- A Quick Play flow (`/app/quick-play`) — another full-screen layout, launched from the Dashboard's
+  Quick Play card or the sidebar. It scripts three screens in sequence: a Finding Opponent screen
+  (pulsing radar animation, rating/league/estimated-wait chips, a Cancel button that returns to the
+  dashboard) that auto-advances after a few seconds into a Victory screen (player-vs-opponent card,
+  accuracy/tests/time/rating stats, Rematch or Back to Dashboard), which itself auto-advances into
+  a League Promotion screen (animated badge, league-transition text, an animated progress bar, and
+  View Profile / Continue actions). Rematch restarts the sequence from the top; every exit point
+  routes somewhere real. There's no actual opponent, timer server, or socket connection — it's a
+  fixed script.
+- A Rankings screen (`/app/rankings`) with Global / Friends / This Season tabs backed by three
+  separate mock datasets (so the tabs show genuinely different standings, not just a relabeled
+  table), a small league badge per row, the current user's row visually highlighted, working
+  client-side pagination on the 24-player Global tab, and a card-list fallback below the `md`
+  breakpoint instead of a cramped table.
 - Scroll-triggered and hover animations (Framer Motion), including a shared page-transition
   wrapper used by every route and a separate inner transition for content inside the app shell, so
   navigating between sidebar items animates just the content area, not the whole shell. Numeric
@@ -83,8 +97,15 @@ real authentication — everything visible is either static content or hand-writ
 - The challenge player's Run/Submit never execute real code — the pass/fail sequence is a fixed
   timer-driven script, and it always ends in success. The language selector only offers
   JavaScript.
-- Every other `/app/*` screen (Quick Play, Team Mode, Challenges, Rankings, Friends, Statistics,
-  Notifications, Settings) is still the generic "coming soon" placeholder.
+- The Quick Play flow always plays out the same way (find opponent → win → get promoted) on a
+  fixed timer — there's no real matchmaking, no possibility of losing, and the numbers shown
+  (opponent, ratings, promotion) are constants from `lib/mockQuickPlay.js`, not computed from the
+  Dashboard's own stats.
+- Rankings' pagination and tab-switching are fully real client-side interactions, but the
+  underlying data never changes — there's no live query, and "This Season" is just a second
+  hand-written dataset, not a real time-boxed leaderboard.
+- Every other `/app/*` screen (Team Mode, Challenges, Friends, Statistics, Notifications,
+  Settings) is still the generic "coming soon" placeholder.
 - The navbar's "Challenges", "Leaderboards", and "Pricing" links, and every footer link (About,
   Blog, Careers, Docs, Community, Support), are visual only — they don't go anywhere yet. Only
   "Features" (scrolls to the on-page feature strip), "Log in", and "Get Started" are functional.
@@ -106,24 +127,30 @@ real authentication — everything visible is either static content or hand-writ
 ```
 DevClash/
   frontend/            React app (implemented so far: public site, auth screens, app shell,
-                        dashboard, profile, practice discovery, challenge player)
+                        dashboard, profile, practice discovery, challenge player, quick play,
+                        rankings)
     src/
       components/
         ui/            Theme-aware primitives: Button, Input, Checkbox, Badge, Card, Tabs, Modal,
-                        Skeleton, ThemeToggle, ProgressRing, Sparkline, Select, EmptyTabState
+                        Skeleton, ThemeToggle, ProgressRing, Sparkline, Select, EmptyTabState,
+                        StatTile, Pagination
         layout/        Navbar, Footer, PageTransition, AppShell, Sidebar, Topbar
         landing/       Hero, FeatureStrip, CodeWindowMock (landing-page-only sections)
         dashboard/     ActionCard, StatCard, DashboardSkeleton
         profile/       EditProfileModal
         practice/      CategoryCard, ChallengeCard, PracticeSkeleton
         challenge/     CodeEditor (Monaco wrapper), TimerChip, StatusPill
+        quickplay/     RadarPing, FindingOpponent, PlayerBlock, VictoryScreen, PromotionScreen
+        rankings/      LeagueBadge, LeaderboardTable, RankingsSkeleton
       pages/           LandingPage, StyleGuidePage, AuthPage, ComingSoonPage, StubPage,
-                        DashboardPage, ProfilePage, PracticePage, ChallengePlayerPage
+                        DashboardPage, ProfilePage, PracticePage, ChallengePlayerPage,
+                        QuickPlayPage, RankingsPage
       store/           themeStore.js (Zustand — theme only, persisted to localStorage)
       lib/             motion.js (Framer Motion presets), useReducedMotion.js, useCountUp.js,
                         useMockLoading.js, useCountdown.js, utils.js, navigation.js,
                         mockUser.js, mockDashboard.js, mockProfile.js, mockChallenges.js,
-                        mockChallengeDetail.js (hardcoded mock data)
+                        mockChallengeDetail.js, mockQuickPlay.js, mockLeaderboard.js
+                        (hardcoded mock data)
       styles/          tokens.css (design tokens), globals.css
   backend/             Empty placeholder — not started
   DevClash-Bank/       Empty placeholder — not started
@@ -159,7 +186,11 @@ DevClash/
   for built-in accessibility and keyboard support.
 - `EmptyTabState` started as a profile-only component and was promoted to `components/ui/` once
   the challenge player needed the same "nothing here yet" treatment for its Submissions/Discussion/
-  Result tabs — one shared component instead of two near-duplicates.
+  Result tabs — one shared component instead of two near-duplicates. `StatTile` followed the same
+  path: first written for Profile's overview stats, then promoted so the Quick Play Victory screen
+  could reuse it instead of a near-identical local copy.
+- `Pagination` is a small shared control (Previous/Next + page indicator) added for the Rankings
+  table, written generically enough to reuse anywhere else a long list needs paging later.
 - The challenge player's code editor is a real Monaco instance (`@monaco-editor/react`), not a
   styled textarea, per the plan's explicit call for it. Monaco loads from a CDN at runtime rather
   than being bundled, so it adds negligible weight to the build; two small custom themes
@@ -173,8 +204,9 @@ DevClash/
   them shrink to near-zero duration automatically when `prefers-reduced-motion` is set. The app
   shell additionally runs its own inner transition (keyed by the current sub-route) so switching
   between sidebar items animates only the content area, not the sidebar/topbar around it. The
-  challenge player deliberately sits outside that grouping — it has its own full-screen layout
-  (no sidebar), so it gets a normal full-page transition in and out instead.
+  challenge player and the Quick Play flow both deliberately sit outside that grouping — each has
+  its own full-screen layout (no sidebar), so they get a normal full-page transition in and out
+  instead.
 
 ## Routing
 
@@ -188,11 +220,11 @@ DevClash/
 | `/app/dashboard`        | App shell — Dashboard (real mock content)                      |
 | `/app/profile`          | App shell — Profile (real mock content)                        |
 | `/app/practice`         | App shell — Practice discovery (real mock content)              |
+| `/app/rankings`         | App shell — Rankings (real mock content)                        |
 | `/app/challenge/:id`    | Full-screen challenge player (real mock content, own layout)    |
-| `/app/quick-play`       | App shell — Quick Play stub                                    |
+| `/app/quick-play`       | Full-screen Quick Play flow (real mock content, own layout)     |
 | `/app/team-mode`        | App shell — Team Mode stub                                     |
 | `/app/challenges`       | App shell — Challenges stub                                    |
-| `/app/rankings`         | App shell — Rankings stub                                      |
 | `/app/friends`          | App shell — Friends stub                                       |
 | `/app/statistics`       | App shell — Statistics stub                                    |
 | `/app/notifications`    | App shell — Notifications stub                                 |
@@ -240,3 +272,7 @@ with `npm run preview`.
   `@monaco-editor/react`/`@monaco-editor/loader` imports it directly, and the production bundle
   size barely changed after adding the editor, consistent with Monaco itself loading from a CDN at
   runtime rather than being bundled. No action needed, but worth knowing it's there.
+- Reviewed the Quick Play flow's timers specifically: each phase schedules its own auto-advance
+  `setTimeout` in a `useEffect` keyed on the current phase, so navigating away or manually changing
+  phase (Rematch, Cancel, Back to Dashboard) always runs the previous effect's cleanup first —
+  there's no path where a stale timer fires after the user has already left that phase.

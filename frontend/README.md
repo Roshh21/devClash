@@ -50,7 +50,7 @@ Copy `.env.example` to `.env`. `VITE_API_BASE_URL` is a placeholder — nothing 
 
 See `../docs/IMPLEMENTATION.md` for the full, up-to-date routing table and implementation record.
 Quick reference: `/` (landing), `/styleguide` (design system), `/login` and `/signup` (shared auth
-card), `/app/dashboard`, `/app/profile`, and `/app/practice` (real mock content),
-`/app/challenge/:id` (full-screen challenge player with a real Monaco editor), and the rest of
-`/app/*` (Quick Play, Team Mode, Challenges, Rankings, Friends, Statistics, Notifications,
-Settings — still placeholder screens).
+card), `/app/dashboard`, `/app/profile`, `/app/practice`, and `/app/rankings` (real mock content),
+`/app/challenge/:id` and `/app/quick-play` (full-screen flows, own layout, no sidebar), and the
+rest of `/app/*` (Team Mode, Challenges, Friends, Statistics, Notifications, Settings — still
+placeholder screens).

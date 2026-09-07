@@ -11,17 +11,21 @@ import DashboardPage from './pages/DashboardPage';
 import ProfilePage from './pages/ProfilePage';
 import PracticePage from './pages/PracticePage';
 import ChallengePlayerPage from './pages/ChallengePlayerPage';
+import QuickPlayPage from './pages/QuickPlayPage';
+import RankingsPage from './pages/RankingsPage';
 import { NAV_ITEMS } from './lib/navigation';
 
 // Routes inside the same group don't retrigger the outer page-fade
 // when navigating between them — /app/* keeps its shell mounted
 // (the shell animates its own inner content instead), and the two
 // auth screens share one group so switching tabs doesn't flash the
-// whole screen. The challenge player has its own full-screen layout
-// (no sidebar), so it's deliberately excluded from the /app group and
-// gets a normal full-page transition like any other top-level screen.
+// whole screen. The challenge player and the Quick Play flow each
+// have their own full-screen layout (no sidebar), so they're
+// deliberately excluded from the /app group and get a normal
+// full-page transition like any other top-level screen.
 function transitionGroup(pathname) {
   if (pathname.startsWith('/app/challenge')) return pathname;
+  if (pathname === '/app/quick-play') return pathname;
   if (pathname.startsWith('/app')) return '/app';
   if (pathname === '/login' || pathname === '/signup') return '/auth';
   return pathname;
@@ -77,11 +81,15 @@ export default function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="profile" element={<ProfilePage />} />
           {NAV_ITEMS.map((item) => {
+            if (item.id === 'quick-play') return null;
             if (item.id === 'dashboard') {
               return <Route key={item.id} path={item.path} element={<DashboardPage />} />;
             }
             if (item.id === 'practice') {
               return <Route key={item.id} path={item.path} element={<PracticePage />} />;
+            }
+            if (item.id === 'rankings') {
+              return <Route key={item.id} path={item.path} element={<RankingsPage />} />;
             }
             return <Route key={item.id} path={item.path} element={<StubPage {...item} />} />;
           })}
@@ -92,6 +100,15 @@ export default function App() {
           element={
             <PageTransition>
               <ChallengePlayerPage />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/app/quick-play"
+          element={
+            <PageTransition>
+              <QuickPlayPage />
             </PageTransition>
           }
         />

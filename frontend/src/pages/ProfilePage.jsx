@@ -6,6 +6,7 @@ import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Tabs from '../components/ui/Tabs';
 import Skeleton from '../components/ui/Skeleton';
+import StatTile from '../components/ui/StatTile';
 import EditProfileModal from '../components/profile/EditProfileModal';
 import EmptyTabState from '../components/ui/EmptyTabState';
 import { useMockLoading } from '../lib/useMockLoading';
@@ -20,15 +21,6 @@ const TABS = [
   { id: 'history', label: 'Match History' },
   { id: 'achievements', label: 'Achievements' },
 ];
-
-function StatTile({ label, value }) {
-  return (
-    <div className="rounded-xl border border-glass bg-surface p-4">
-      <p className="text-xs font-medium text-secondary">{label}</p>
-      <p className="mt-1 text-xl font-bold text-primary">{value}</p>
-    </div>
-  );
-}
 
 function ProfileSkeleton() {
   return (
