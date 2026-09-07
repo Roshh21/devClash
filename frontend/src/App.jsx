@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
+import { Analytics } from '@vercel/analytics/react';
 import PageTransition from './components/layout/PageTransition';
 import AppShell from './components/layout/AppShell';
 import LandingPage from './pages/LandingPage';
@@ -35,96 +36,99 @@ export default function App() {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={transitionGroup(location.pathname)}>
-        <Route
-          path="/"
-          element={
-            <PageTransition>
-              <LandingPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/styleguide"
-          element={
-            <PageTransition>
-              <StyleGuidePage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/login"
-          element={
-            <PageTransition>
-              <AuthPage />
-            </PageTransition>
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            <PageTransition>
-              <AuthPage />
-            </PageTransition>
-          }
-        />
-
-        <Route
-          path="/app"
-          element={
-            <PageTransition>
-              <AppShell />
-            </PageTransition>
-          }
-        >
-          <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="profile" element={<ProfilePage />} />
-          {NAV_ITEMS.map((item) => {
-            if (item.id === 'quick-play') return null;
-            if (item.id === 'dashboard') {
-              return <Route key={item.id} path={item.path} element={<DashboardPage />} />;
+    <>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={transitionGroup(location.pathname)}>
+          <Route
+            path="/"
+            element={
+              <PageTransition>
+                <LandingPage />
+              </PageTransition>
             }
-            if (item.id === 'practice') {
-              return <Route key={item.id} path={item.path} element={<PracticePage />} />;
+          />
+          <Route
+            path="/styleguide"
+            element={
+              <PageTransition>
+                <StyleGuidePage />
+              </PageTransition>
             }
-            if (item.id === 'rankings') {
-              return <Route key={item.id} path={item.path} element={<RankingsPage />} />;
+          />
+          <Route
+            path="/login"
+            element={
+              <PageTransition>
+                <AuthPage />
+              </PageTransition>
             }
-            return <Route key={item.id} path={item.path} element={<StubPage {...item} />} />;
-          })}
-        </Route>
+          />
+          <Route
+            path="/signup"
+            element={
+              <PageTransition>
+                <AuthPage />
+              </PageTransition>
+            }
+          />
 
-        <Route
-          path="/app/challenge/:challengeId"
-          element={
-            <PageTransition>
-              <ChallengePlayerPage />
-            </PageTransition>
-          }
-        />
+          <Route
+            path="/app"
+            element={
+              <PageTransition>
+                <AppShell />
+              </PageTransition>
+            }
+          >
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="profile" element={<ProfilePage />} />
+            {NAV_ITEMS.map((item) => {
+              if (item.id === 'quick-play') return null;
+              if (item.id === 'dashboard') {
+                return <Route key={item.id} path={item.path} element={<DashboardPage />} />;
+              }
+              if (item.id === 'practice') {
+                return <Route key={item.id} path={item.path} element={<PracticePage />} />;
+              }
+              if (item.id === 'rankings') {
+                return <Route key={item.id} path={item.path} element={<RankingsPage />} />;
+              }
+              return <Route key={item.id} path={item.path} element={<StubPage {...item} />} />;
+            })}
+          </Route>
 
-        <Route
-          path="/app/quick-play"
-          element={
-            <PageTransition>
-              <QuickPlayPage />
-            </PageTransition>
-          }
-        />
+          <Route
+            path="/app/challenge/:challengeId"
+            element={
+              <PageTransition>
+                <ChallengePlayerPage />
+              </PageTransition>
+            }
+          />
 
-        <Route
-          path="*"
-          element={
-            <PageTransition>
-              <ComingSoonPage
-                title="Page not found"
-                description="This route doesn't exist yet. Head back to the homepage."
-              />
-            </PageTransition>
-          }
-        />
-      </Routes>
-    </AnimatePresence>
+          <Route
+            path="/app/quick-play"
+            element={
+              <PageTransition>
+                <QuickPlayPage />
+              </PageTransition>
+            }
+          />
+
+          <Route
+            path="*"
+            element={
+              <PageTransition>
+                <ComingSoonPage
+                  title="Page not found"
+                  description="This route doesn't exist yet. Head back to the homepage."
+                />
+              </PageTransition>
+            }
+          />
+        </Routes>
+      </AnimatePresence>
+      <Analytics />
+    </>
   );
 }
