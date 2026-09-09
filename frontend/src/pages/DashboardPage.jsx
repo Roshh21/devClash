@@ -12,7 +12,7 @@ import StatCard from '../components/dashboard/StatCard';
 import DashboardSkeleton from '../components/dashboard/DashboardSkeleton';
 import { useMockLoading } from '../lib/useMockLoading';
 import { useCountUp } from '../lib/useCountUp';
-import { MOCK_USER } from '../lib/mockUser';
+import { useCurrentUser } from '../lib/useCurrentUser';
 import { NAV_ITEMS } from '../lib/navigation';
 import {
   DASHBOARD_STATS,
@@ -34,6 +34,7 @@ function greeting() {
 
 export default function DashboardPage() {
   const loading = useMockLoading();
+  const currentUser = useCurrentUser();
   const rating = useCountUp(DASHBOARD_STATS.rating.value);
   const winRate = useCountUp(DASHBOARD_STATS.winRate.value);
   const totalMatches = useCountUp(DASHBOARD_STATS.totalMatches.value);
@@ -56,7 +57,7 @@ export default function DashboardPage() {
           <motion.div variants={slideUp} className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-primary sm:text-3xl">
-                {greeting()}, {MOCK_USER.name}.
+                {greeting()}, {currentUser.name}.
               </h1>
               <p className="mt-1 text-secondary">Ready for another clash?</p>
             </div>

@@ -5,10 +5,12 @@ what's still unfinished. It reflects the actual code, not a plan.
 
 ## Current state
 
-The project is a **frontend-only** React application. There is no backend, no database, and no
-real authentication — everything visible is either static content or hand-written mock data. The
-frontend is now feature-complete end to end for every screen described below; nothing has been
-deployed anywhere (see "Deployment" at the bottom).
+The frontend is feature-complete end to end for every screen described below. As of Stage B1–B3,
+**authentication is real**: a Node/Express + MongoDB backend now backs signup, login, sessions, and
+protected routes. Everything past login — dashboard, profile, practice, the challenge player, quick
+play, rankings, friends, notifications, admin — is still driven entirely by hand-written mock data;
+those get wired up to real endpoints in later stages (C onward). Nothing has been deployed anywhere
+(see "Deployment" below).
 
 ### What works right now
 
@@ -24,14 +26,29 @@ deployed anywhere (see "Deployment" at the bottom).
   Up tabs, email/password (plus username and confirm-password on signup), a show/hide password
   toggle, a "remember me" checkbox on login and a terms checkbox on signup, inline client-side
   validation (empty fields, email format, password length, password match), and three inert
-  "continue with" social buttons. Submitting a valid form shows a short loading state and then an
-  inline "coming soon" notice — nothing is created or persisted.
-- An authenticated app shell at `/app/*`: a sidebar that collapses to icon-only on desktop and
-  becomes a slide-in drawer with backdrop on mobile, a topbar with a (non-functional) search field,
-  a real notification-bell dropdown, and an avatar menu (View Profile + Settings links, and a "Log
-  out" link that just returns to the homepage, since there's no real session to end). The active
-  nav item is highlighted. A hardcoded mock user ("Roshni", role `admin`) stands in for a real
-  logged-in account.
+  "continue with" social buttons. **As of Stage B2/B3, submitting a valid form is real**: it calls
+  the backend, creates/authenticates an account, and logs you in — a duplicate email/username comes
+  back as a field-level error (not a generic toast), and a wrong password shows a generic "invalid
+  email or password" message rather than confirming which field was wrong. A network failure (e.g.
+  the backend isn't running) shows a clear "can't reach the server" notice instead of hanging.
+  Social login buttons are still inert "coming soon."
+- An authenticated app shell at `/app/*`, now gated by a real session (`RequireAuth` — see
+  `components/auth/RequireAuth.jsx`): visiting any `/app/*` URL without a valid, logged-in session
+  redirects to `/login`, and a still-valid session survives a page refresh (checked once against
+  `GET /api/auth/me` on load). The shell itself: a sidebar that collapses to icon-only on desktop
+  and becomes a slide-in drawer with backdrop on mobile, a topbar with a (non-functional) search
+  field, a real notification-bell dropdown, and an avatar menu (View Profile + Settings links, and
+  a "Log out" button that ends the real session and returns to the homepage). The active nav item
+  is highlighted. Sidebar/topbar/profile/dashboard all show the real logged-in user's name and
+  initials (`lib/useCurrentUser.js`) — rating, league, and tagline still come from the Stage A mock
+  (`lib/mockUser.js`) since the backend has no concept of those yet. The Admin sidebar section is
+  **deliberately still gated on the mock role flag**, not the real one — see the note on that in
+  "Placeholder / not real yet" below.
+- A real backend (`backend/`): Node/Express + MongoDB (Mongoose), with `GET /health` and
+  `POST/GET /api/auth/{signup,login,me,logout}`. Passwords are bcrypt-hashed (never stored or
+  returned in plaintext), sessions are stateless JWTs sent as `Authorization: Bearer <token>` (not
+  cookies — see `backend/README.md` for why), and CORS is restricted to configured origins rather
+  than left open. See `backend/README.md` for setup and a full endpoint reference.
 - A Dashboard screen (`/app/dashboard`) built entirely from one local mock-data file: a greeting
   header with a quote, three action cards (Quick Play, Practice, Team Mode) linking into the app
   shell, four animated stat cards (Rating, Win Rate with a circular progress ring, Streak, Total
@@ -112,12 +129,16 @@ deployed anywhere (see "Deployment" at the bottom).
 
 ### Placeholder / not real yet
 
-- Login and signup don't create or check accounts — see above. Social login buttons show a
-  "coming soon" notice instead of doing anything.
-- The `/app/*` shell is a standalone area reachable only by typing the URL — it is intentionally
-  **not** linked from `/login` or `/signup` yet, since connecting real auth to the app shell is
-  later work. The mock "Roshni" user (including her `role: 'admin'` flag) is hardcoded, not read
-  from anywhere.
+- Social login buttons show a "coming soon" notice instead of doing anything; "Forgot password" is
+  the same.
+- There's no `requireAdmin` enforcement on the backend yet, and no way to seed or promote an admin
+  account — that's Stage B4. Until then, the Admin sidebar section is deliberately still gated on
+  `MOCK_USER.role` (`lib/mockUser.js`), not the real authenticated user's role, since every real
+  signup defaults to `role: 'user'` server-side with no seed mechanism yet. Practically: there's
+  still no route guard preventing direct navigation to `/app/admin/*` while logged in as a real
+  (non-admin) user — same limitation as before, now for a slightly different reason. Rating,
+  league, and tagline shown on Profile/Sidebar also still come from that same mock file, since the
+  backend has no concept of them yet (Stage E/K).
 - Dashboard, Profile, Practice, Rankings, Friends, Notifications, and the Admin screens all show
   fixed mock data from local files under `src/lib/` — nothing is fetched, and every "loading"
   skeleton is a timer, not a real request.
@@ -135,10 +156,6 @@ deployed anywhere (see "Deployment" at the bottom).
 - Rankings' pagination and tab-switching are fully real client-side interactions, but the
   underlying data never changes — there's no live query, and "This Season" is just a second
   hand-written dataset, not a real time-boxed leaderboard.
-- The Admin role gate only hides/shows a sidebar section and a set of routes that still exist —
-  there's no route guard preventing direct navigation to `/app/admin/*` when the mock role is
-  `'user'`. That's intentional: real enforcement is a backend/API concern for later, not something
-  a frontend-only build can do meaningfully.
 - Every other `/app/*` screen (Team Mode, Challenges, Statistics, Settings) is still the generic
   "coming soon" placeholder.
 - The navbar's "Challenges", "Leaderboards", and "Pricing" links, and every footer link (About,
@@ -146,25 +163,27 @@ deployed anywhere (see "Deployment" at the bottom).
   "Features" (scrolls to the on-page feature strip), "Log in", and "Get Started" are functional.
 - Any unmatched URL falls back to a generic "coming soon" screen rather than a designed 404 page.
 - The favicon is a simple placeholder mark, not a finished brand asset.
-- `.env.example` defines `VITE_API_BASE_URL`, but nothing in the app reads it — there is no
-  network layer yet.
 - The hero's "workspace" visual is a CSS/SVG mock of a code editor window (with a small floating
   quote card), not a photograph — no image assets are bundled with the project.
 
 ### Explicitly out of scope right now
 
-- `backend/` — empty placeholder, no server code.
-- `DevClash-Bank/` — empty placeholder, no content.
-- Any database, real user accounts, sessions, or persisted data.
+- Role/admin enforcement on the backend, and everything else in Stage B4–B6 (seeding an admin,
+  rate limiting, account lockout, password reset).
+- The question bank, matchmaking, code evaluation, real-time features, and everything else in
+  Stages C onward — `backend/` currently only covers auth.
+- `DevClash-Bank/` — empty placeholder, no content (Stage C).
+- Deploying either the frontend or the backend anywhere.
 
 ## Deployment
 
-Not attempted. Getting a real, shareable production URL live (custom 404/favicon/OG polish,
-environment variables on the host, a smoke test against the deployed domain) requires an actual
-hosting account and external network access this environment doesn't have, so it's left for
-whoever has that access. Everything above this line is otherwise ready for it: the app builds
-cleanly (`npm run build`), lints cleanly, and every route has been verified to serve correctly from
-a local production build (see "Verification performed").
+Not attempted, for either the frontend or the backend. Getting real, shareable production URLs
+live (custom 404/favicon/OG polish, environment variables on both hosts, CORS configured for the
+real frontend origin, a production MongoDB Atlas cluster, a smoke test against the deployed
+domains) requires actual hosting accounts and external network access this environment doesn't
+have, so it's left for whoever has that access. Everything above this line is otherwise ready for
+it: the frontend builds cleanly (`npm run build`), both lint cleanly, and every frontend route has
+been verified to serve correctly from a local production build (see "Verification performed").
 
 ## Project structure
 
@@ -178,6 +197,7 @@ DevClash/
                         Tabs, Modal, Skeleton, ThemeToggle, ProgressRing, ProgressBar, Sparkline,
                         Select, EmptyTabState, StatTile, Pagination, InlineNotice
         layout/        Navbar, Footer, PageTransition, AppShell, Sidebar, Topbar, NotificationBell
+        auth/           RequireAuth (route guard — redirects to /login without a session)
         landing/       Hero, FeatureStrip, CodeWindowMock (landing-page-only sections)
         dashboard/     ActionCard, StatCard, DashboardSkeleton
         profile/       EditProfileModal
@@ -192,15 +212,26 @@ DevClash/
                         DashboardPage, ProfilePage, PracticePage, ChallengePlayerPage,
                         QuickPlayPage, RankingsPage, FriendsPage, NotificationsPage,
                         AdminContentPage, AdminChallengeFormPage, AdminUsersPage
-      store/           themeStore.js (Zustand — theme only, persisted to localStorage)
+      store/           themeStore.js (theme, persisted to localStorage),
+                        authStore.js (real session — user/token/status, Zustand)
       lib/             motion.js (Framer Motion presets), useReducedMotion.js, useCountUp.js,
-                        useMockLoading.js, useCountdown.js, utils.js, navigation.js,
-                        mockUser.js, mockDashboard.js, mockProfile.js, mockChallenges.js,
-                        mockChallengeDetail.js, mockQuickPlay.js, mockLeaderboard.js,
-                        mockSocial.js, mockNotifications.js, mockAdminContent.js,
-                        mockAdminUsers.js (hardcoded mock data)
+                        useMockLoading.js, useCountdown.js, utils.js, navigation.js, api.js
+                        (fetch wrapper for the backend), useCurrentUser.js (real identity +
+                        still-mocked gamification fields), mockUser.js, mockDashboard.js,
+                        mockProfile.js, mockChallenges.js, mockChallengeDetail.js,
+                        mockQuickPlay.js, mockLeaderboard.js, mockSocial.js,
+                        mockNotifications.js, mockAdminContent.js, mockAdminUsers.js
       styles/          tokens.css (design tokens), globals.css
-  backend/             Empty placeholder — not started
+  backend/             Node/Express + MongoDB API — Stage B1–B3 (auth only so far)
+    src/
+      config/          env.js (validated env vars), db.js (MongoDB connection)
+      models/          User.js
+      controllers/     authController.js
+      routes/          authRoutes.js, healthRoutes.js
+      middleware/      auth.js (requireAuth), errorHandler.js, notFound.js
+      utils/           ApiError.js, asyncHandler.js, token.js (JWT), validators.js
+      app.js           Express app (no side effects — importable without a DB connection)
+      server.js        Entrypoint — connects DB, then listens
   DevClash-Bank/       Empty placeholder — not started
   docs/
     IMPLEMENTATION.md  This file
@@ -298,11 +329,11 @@ turned up and were fixed:
 | -------------------------- | ------------------------------------------------------------ |
 | `/`                         | Landing page                                                  |
 | `/styleguide`               | Design system reference page                                  |
-| `/login`                    | Auth card, Log In tab active                                   |
-| `/signup`                   | Auth card, Sign Up tab active                                  |
-| `/app` → `/app/dashboard`   | Redirects into the app shell's default screen                 |
+| `/login`                    | Auth card, Log In tab active (redirects to `/app/dashboard` if already logged in) |
+| `/signup`                   | Auth card, Sign Up tab active (same redirect if already logged in) |
+| `/app` → `/app/dashboard`   | **Requires a real session** — redirects to `/login` if logged out |
 | `/app/dashboard`            | App shell — Dashboard (real mock content)                      |
-| `/app/profile`              | App shell — Profile (real mock content)                        |
+| `/app/profile`              | App shell — Profile (real identity header, mock stats)         |
 | `/app/practice`             | App shell — Practice discovery (real mock content)             |
 | `/app/rankings`             | App shell — Rankings (real mock content)                       |
 | `/app/friends`              | App shell — Friends (real mock content)                        |
@@ -312,18 +343,32 @@ turned up and were fixed:
 | `/app/admin/content/new`    | App shell — New Challenge form                                 |
 | `/app/admin/content/:id/edit` | App shell — Edit Challenge form                              |
 | `/app/admin/users`          | App shell — Admin user management                              |
-| `/app/challenge/:id`        | Full-screen challenge player (own layout, no sidebar)          |
-| `/app/quick-play`           | Full-screen Quick Play flow (own layout, no sidebar)           |
+| `/app/challenge/:id`        | Full-screen challenge player (own layout, no sidebar) — requires a session |
+| `/app/quick-play`           | Full-screen Quick Play flow (own layout, no sidebar) — requires a session |
 | `/app/team-mode`            | App shell — Team Mode stub                                     |
 | `/app/challenges`           | App shell — Challenges stub                                    |
 | `/app/statistics`           | App shell — Statistics stub                                    |
 | `/app/settings`             | App shell — Settings stub                                      |
 | anything else               | Generic "coming soon" placeholder                              |
 
+Every path prefixed with `/app` is wrapped in `RequireAuth` (`components/auth/RequireAuth.jsx`),
+which checks the session once on app load and redirects unauthenticated visitors to `/login`,
+preserving the originally-requested path so a successful login sends them back there.
+
 ## Known limitations
 
-- No automated tests yet.
-- No backend calls anywhere — all content is hardcoded in components.
+- No automated tests yet, on either the frontend or the backend.
+- Only auth talks to a real backend — every other screen's data is still hardcoded in components
+  (see "Placeholder / not real yet" above for the full list).
+- No live MongoDB connection was available in the environment this backend was built in (no
+  internet access to Atlas, no way to install a local `mongod`), so signup/login were verified
+  three other ways instead: (1) booting the real Express app without a DB connection and exercising
+  routing, validation, JWT middleware, and CORS against it directly; (2) testing JWT sign/verify and
+  bcrypt hash/compare in isolation; (3) running the frontend's actual `authStore` against a mocked
+  `fetch` through 8 scenarios (signup, duplicate email, wrong password, login, session-restore on
+  refresh, expired-token cleanup, idempotent init). An actual signup → login → `/me` round trip
+  against a real Atlas cluster still hasn't been run — see the curl commands in
+  `backend/README.md` to do that yourself.
 - Icons and copy are illustrative rather than final production copy.
 - The challenge player's Monaco editor loads from a CDN at runtime (the standard way
   `@monaco-editor/react` works without extra bundler config) — it needs the end user's browser to
@@ -343,17 +388,38 @@ turned up and were fixed:
 
 ## Running locally
 
+Both servers need to be running for anything past `/` and `/styleguide` to work.
+
 ```bash
+# Terminal 1 — backend
+cd backend
+cp .env.example .env   # fill in MONGODB_URI and JWT_SECRET — see backend/README.md
+npm install
+npm run dev
+
+# Terminal 2 — frontend
 cd frontend
+cp .env.example .env   # defaults already point at the backend's default port
 npm install
 npm run dev
 ```
 
-Build for production: `npm run build` (output in `frontend/dist/`). Preview that build locally
-with `npm run preview`.
+Build the frontend for production: `npm run build` (output in `frontend/dist/`). Preview that
+build locally with `npm run preview`. The backend has no build step — `npm start` runs it directly.
 
 ## Verification performed
 
+- **Backend (Stage B1–B3):** every source file passes `node --check`; `npm install` is clean aside
+  from a moderate `qs` advisory transitive through Express 4.x itself (not our code, same
+  no-action-needed category as the DOMPurify note below). Booted the real `app.js` (no DB
+  connection) and hit every route directly: `/health` → 200 with Mongo state reported, malformed
+  signup/login → 400 with the correct field errors, missing/garbage token on `/api/auth/me` → 401,
+  unknown route → 404, CORS preflight correctly allows `localhost:5173` and rejects other origins.
+  JWT sign/verify and bcrypt hash/compare round-tripped correctly in isolation. The frontend's
+  `authStore.js` was run against a mocked `fetch` through 8 real scenarios (see "Known limitations"
+  above) — all passed, including the security-conscious bits (generic "invalid email or password"
+  on login, no field leaked; duplicate-email signup surfaces the right field error without ever
+  flipping the store into an authenticated state).
 - `npm run build` completes with no errors on every change described in this document.
 - `npm run lint` (oxlint) reports 0 warnings / 0 errors on the final state.
 - The production build was served locally (`vite preview`) and every route in the table above

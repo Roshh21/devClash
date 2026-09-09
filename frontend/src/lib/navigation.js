@@ -91,7 +91,9 @@ export const NAV_ITEMS = [
 ];
 
 // Only rendered in the sidebar when MOCK_USER.role === 'admin'
-// (see components/layout/Sidebar.jsx). Stage B makes this a real,
+// (see components/layout/Sidebar.jsx). Login/sessions became real in
+// Stage B3, but this specific flag is deliberately untouched — Stage
+// B4 ("Roles & admin authorization") is what makes it a real,
 // server-enforced role instead of a local flag.
 export const ADMIN_NAV_ITEMS = [
   { id: 'admin-content', path: 'admin/content', label: 'Content', icon: FileStack },

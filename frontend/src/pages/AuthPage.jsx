@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowRight,
@@ -20,6 +20,7 @@ import Tabs from '../components/ui/Tabs';
 import Checkbox from '../components/ui/Checkbox';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import InlineNotice from '../components/ui/InlineNotice';
+import { useAuthStore } from '../store/authStore';
 import { slideUp, tabContentTransition } from '../lib/motion';
 
 const SOCIAL_PROVIDERS = [
@@ -73,6 +74,9 @@ function validate(mode, values) {
 export default function AuthPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const authStatus = useAuthStore((s) => s.status);
+  const login = useAuthStore((s) => s.login);
+  const signup = useAuthStore((s) => s.signup);
   const [mode, setMode] = useState(() => (location.pathname === '/signup' ? 'signup' : 'login'));
   const [values, setValues] = useState(EMPTY_VALUES);
   const [errors, setErrors] = useState({});
@@ -92,7 +96,7 @@ export default function AuthPage() {
     navigate(next === 'signup' ? '/signup' : '/login', { replace: true });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const nextErrors = validate(mode, values);
     setErrors(nextErrors);
@@ -100,14 +104,35 @@ export default function AuthPage() {
     if (Object.keys(nextErrors).length > 0) return;
 
     setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
-      setNotice(
-        mode === 'login'
-          ? "Login isn't wired up yet — coming soon."
-          : "Account creation isn't wired up yet — coming soon."
-      );
-    }, 900);
+    const result =
+      mode === 'login'
+        ? await login({ email: values.email, password: values.password })
+        : await signup({
+            username: values.username,
+            email: values.email,
+            password: values.password,
+          });
+    setSubmitting(false);
+
+    if (result.ok) {
+      // Bounced here by RequireAuth? Send them back where they were
+      // headed instead of always landing on the dashboard.
+      const redirectTo = location.state?.from?.pathname || '/app/dashboard';
+      navigate(redirectTo, { replace: true });
+      return;
+    }
+
+    if (result.fieldErrors) {
+      setErrors((prev) => ({ ...prev, ...result.fieldErrors }));
+    }
+    setNotice(result.message);
+  }
+
+  // A still-valid stored session means there's nothing for this form
+  // to do — send them straight into the app instead of asking them
+  // to log in again.
+  if (authStatus === 'authenticated') {
+    return <Navigate to="/app/dashboard" replace />;
   }
 
   return (

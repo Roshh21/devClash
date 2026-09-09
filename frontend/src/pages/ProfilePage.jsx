@@ -12,7 +12,7 @@ import EditProfileModal from '../components/profile/EditProfileModal';
 import EmptyTabState from '../components/ui/EmptyTabState';
 import { useMockLoading } from '../lib/useMockLoading';
 import { useCountUp } from '../lib/useCountUp';
-import { MOCK_USER } from '../lib/mockUser';
+import { useCurrentUser } from '../lib/useCurrentUser';
 import { PROFILE_STATS, FAVORITE_CATEGORIES, PROFILE_QUOTE } from '../lib/mockProfile';
 import { slideUp, staggerContainer, tabContentTransition } from '../lib/motion';
 
@@ -46,6 +46,7 @@ function ProfileSkeleton() {
 
 export default function ProfilePage() {
   const loading = useMockLoading();
+  const currentUser = useCurrentUser();
   const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [savedNotice, setSavedNotice] = useState(false);
@@ -63,16 +64,16 @@ export default function ProfilePage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-center gap-5">
                 <span className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-accent text-2xl font-bold text-accent-contrast">
-                  {MOCK_USER.initials}
+                  {currentUser.initials}
                 </span>
                 <div>
-                  <h1 className="text-2xl font-bold text-primary">{MOCK_USER.name}</h1>
+                  <h1 className="text-2xl font-bold text-primary">{currentUser.name}</h1>
                   <div className="mt-1 flex items-center gap-2 text-sm text-secondary">
                     <Shield size={14} className="text-accent" />
-                    {MOCK_USER.league} · {MOCK_USER.rating}
+                    {currentUser.league} · {currentUser.rating}
                   </div>
                   <p className="mt-2 max-w-sm font-mono text-sm italic text-tertiary">
-                    &ldquo;{MOCK_USER.tagline}&rdquo;
+                    &ldquo;{currentUser.tagline}&rdquo;
                   </p>
                 </div>
               </div>

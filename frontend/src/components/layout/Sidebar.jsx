@@ -2,9 +2,12 @@ import { NavLink, Link } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Code2, ShieldCheck } from 'lucide-react';
 import { NAV_ITEMS, ADMIN_NAV_ITEMS } from '../../lib/navigation';
 import { MOCK_USER } from '../../lib/mockUser';
+import { useCurrentUser } from '../../lib/useCurrentUser';
 import { cn } from '../../lib/utils';
 
 export default function Sidebar({ collapsed = false, onToggleCollapse, onNavigate }) {
+  const currentUser = useCurrentUser();
+
   return (
     <div className="flex h-full flex-col bg-bg-elevated">
       <div className={cn('flex items-center gap-2 px-5 py-5', collapsed && 'justify-center px-2')}>
@@ -36,6 +39,12 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onNavigat
           </NavLink>
         ))}
 
+        {/* Deliberately still gated on the mock flag, not the real
+            authenticated role — Stage B4 ("Roles & admin authorization")
+            is what swaps this to a server-verified role and adds a way
+            to actually become an admin. Until then every real signup
+            defaults to 'user', so leaving this on the mock flag is what
+            keeps the Admin panel demoable in the meantime. */}
         {MOCK_USER.role === 'admin' && (
           <div className="mt-4 border-t border-glass pt-4">
             {!collapsed && (
@@ -71,19 +80,19 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onNavigat
         <Link
           to="profile"
           onClick={onNavigate}
-          title={collapsed ? MOCK_USER.name : undefined}
+          title={collapsed ? currentUser.name : undefined}
           className={cn(
             'flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-strong',
             !collapsed && 'bg-surface'
           )}
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-bold text-accent-contrast">
-            {MOCK_USER.initials}
+            {currentUser.initials}
           </span>
           {!collapsed && (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-primary">{MOCK_USER.name}</p>
-              <p className="truncate text-xs text-secondary">{MOCK_USER.league}</p>
+              <p className="truncate text-sm font-semibold text-primary">{currentUser.name}</p>
+              <p className="truncate text-xs text-secondary">{currentUser.league}</p>
             </div>
           )}
         </Link>

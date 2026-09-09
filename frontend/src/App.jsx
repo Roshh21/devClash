@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import PageTransition from './components/layout/PageTransition';
 import AppShell from './components/layout/AppShell';
+import RequireAuth from './components/auth/RequireAuth';
+import { useAuthStore } from './store/authStore';
 import LandingPage from './pages/LandingPage';
 import StyleGuidePage from './pages/StyleGuidePage';
 import AuthPage from './pages/AuthPage';
@@ -38,6 +41,11 @@ function transitionGroup(pathname) {
 
 export default function App() {
   const location = useLocation();
+  const initialize = useAuthStore((s) => s.initialize);
+
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
 
   return (
     <AnimatePresence mode="wait">
@@ -79,7 +87,9 @@ export default function App() {
           path="/app"
           element={
             <PageTransition>
-              <AppShell />
+              <RequireAuth>
+                <AppShell />
+              </RequireAuth>
             </PageTransition>
           }
         >
@@ -115,7 +125,9 @@ export default function App() {
           path="/app/challenge/:challengeId"
           element={
             <PageTransition>
-              <ChallengePlayerPage />
+              <RequireAuth>
+                <ChallengePlayerPage />
+              </RequireAuth>
             </PageTransition>
           }
         />
@@ -124,7 +136,9 @@ export default function App() {
           path="/app/quick-play"
           element={
             <PageTransition>
-              <QuickPlayPage />
+              <RequireAuth>
+                <QuickPlayPage />
+              </RequireAuth>
             </PageTransition>
           }
         />

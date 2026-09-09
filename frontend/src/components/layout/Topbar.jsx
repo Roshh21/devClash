@@ -1,15 +1,25 @@
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, LogOut, Menu, Search, Settings, UserRound } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
 import NotificationBell from './NotificationBell';
-import { MOCK_USER } from '../../lib/mockUser';
+import { useCurrentUser } from '../../lib/useCurrentUser';
+import { useAuthStore } from '../../store/authStore';
 import { cn } from '../../lib/utils';
 import { dropdownMenu } from '../../lib/motion';
 
 export default function Topbar({ onOpenMobileNav }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const navigate = useNavigate();
+  const currentUser = useCurrentUser();
+  const logout = useAuthStore((s) => s.logout);
+
+  function handleLogout() {
+    setMenuOpen(false);
+    logout();
+    navigate('/');
+  }
 
   return (
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-glass bg-[var(--color-nav-bg)] px-4 py-3 backdrop-blur-glass sm:px-6">
@@ -46,9 +56,9 @@ export default function Topbar({ onOpenMobileNav }) {
             className="flex items-center gap-2 rounded-lg border border-glass bg-surface py-1.5 pl-1.5 pr-2.5 text-sm font-medium text-primary transition-colors hover:bg-surface-strong"
           >
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-contrast">
-              {MOCK_USER.initials}
+              {currentUser.initials}
             </span>
-            <span className="hidden sm:inline">{MOCK_USER.name}</span>
+            <span className="hidden sm:inline">{currentUser.name}</span>
             <ChevronDown size={14} className={cn('transition-transform', menuOpen && 'rotate-180')} />
           </button>
 
@@ -77,13 +87,13 @@ export default function Topbar({ onOpenMobileNav }) {
                   >
                     <Settings size={15} /> Settings
                   </NavLink>
-                  <Link
-                    to="/"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-secondary transition-colors hover:bg-surface hover:text-primary"
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-secondary transition-colors hover:bg-surface hover:text-primary"
                   >
                     <LogOut size={15} /> Log out
-                  </Link>
+                  </button>
                 </motion.div>
               </>
             )}

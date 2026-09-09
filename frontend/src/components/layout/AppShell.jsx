@@ -7,10 +7,11 @@ import PageTransition from './PageTransition';
 import { cn } from '../../lib/utils';
 import { drawerSlide, modalBackdrop } from '../../lib/motion';
 
-// A mock "logged in as Roshni" state is hardcoded (see lib/mockUser.js)
-// so every screen inside this shell can be built without real auth.
-// This shell is not yet linked from the auth flow — it's reachable
-// directly at /app/* until real sessions exist.
+// Stage A built every screen here against a hardcoded "logged in as
+// Roshni" identity. As of Stage B3, this shell is only reachable via
+// RequireAuth (see components/auth/RequireAuth.jsx) with a real,
+// authenticated session — Sidebar/Topbar now read the real user
+// through lib/useCurrentUser.js instead of the Stage A mock.
 export default function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
