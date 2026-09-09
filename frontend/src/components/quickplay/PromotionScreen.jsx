@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Shield } from 'lucide-react';
 import Button from '../ui/Button';
+import ProgressBar from '../ui/ProgressBar';
 import { PROMOTION, PROMOTION_QUOTE } from '../../lib/mockQuickPlay';
 import { pageTransition, staggerContainer, slideUp } from '../../lib/motion';
 import { useReducedMotion } from '../../lib/useReducedMotion';
@@ -45,14 +46,7 @@ export default function PromotionScreen({ onViewProfile, onContinue }) {
         </motion.p>
 
         <motion.div variants={slideUp} className="mt-5 w-full">
-          <div className="h-2 w-full overflow-hidden rounded-full bg-surface-strong">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${PROMOTION.progressPercent}%` }}
-              transition={{ duration: reduced ? 0 : 1, delay: 0.3, ease: [0.4, 0, 0.2, 1] }}
-              className="h-full rounded-full bg-accent"
-            />
-          </div>
+          <ProgressBar value={PROMOTION.progressPercent} delay={0.3} />
           <p className="mt-2 text-sm text-secondary">
             {PROMOTION.ratingBefore} → {PROMOTION.ratingAfter}{' '}
             <span className="font-semibold text-success">(+{delta})</span>

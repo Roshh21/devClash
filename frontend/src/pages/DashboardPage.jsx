@@ -5,6 +5,7 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import ProgressRing from '../components/ui/ProgressRing';
+import ProgressBar from '../components/ui/ProgressBar';
 import Sparkline from '../components/ui/Sparkline';
 import ActionCard from '../components/dashboard/ActionCard';
 import StatCard from '../components/dashboard/StatCard';
@@ -111,12 +112,7 @@ export default function DashboardPage() {
                 <Shield size={30} />
               </span>
               <p className="mt-3 font-semibold text-primary">{YOUR_RANK.league}</p>
-              <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-strong">
-                <div
-                  className="h-full rounded-full bg-accent transition-[width] duration-700 ease-standard"
-                  style={{ width: `${Math.min(rankProgress, 100)}%` }}
-                />
-              </div>
+              <ProgressBar value={rankProgress} className="mt-3" />
               <p className="mt-2 text-xs text-secondary">
                 {YOUR_RANK.points} / {YOUR_RANK.nextThreshold}
               </p>

@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion';
-import { staggerContainer } from '../../lib/motion';
+import { staggerContainer, prefersReducedMotion } from '../../lib/motion';
+
+const reduced = prefersReducedMotion();
 
 const barVariants = {
-  hidden: { scaleY: 0 },
-  visible: { scaleY: 1, transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] } },
+  hidden: { scaleY: reduced ? 1 : 0 },
+  visible: { scaleY: 1, transition: { duration: reduced ? 0 : 0.5, ease: [0.4, 0, 0.2, 1] } },
 };
 
 export default function Sparkline({ values = [], height = 32, className = '' }) {

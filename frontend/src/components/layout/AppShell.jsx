@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import PageTransition from './PageTransition';
 import { cn } from '../../lib/utils';
+import { drawerSlide, modalBackdrop } from '../../lib/motion';
 
 // A mock "logged in as Roshni" state is hardcoded (see lib/mockUser.js)
 // so every screen inside this shell can be built without real auth.
@@ -34,19 +35,20 @@ export default function AppShell() {
           <>
             <motion.div
               key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={modalBackdrop.initial}
+              animate={modalBackdrop.animate}
+              exit={modalBackdrop.exit}
+              transition={modalBackdrop.transition}
               className="fixed inset-0 z-40 bg-black/50 lg:hidden"
               onClick={() => setMobileNavOpen(false)}
               aria-hidden="true"
             />
             <motion.div
               key="drawer"
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              initial={drawerSlide.initial}
+              animate={drawerSlide.animate}
+              exit={drawerSlide.exit}
+              transition={drawerSlide.transition}
               className="fixed inset-y-0 left-0 z-50 w-72 border-r border-glass bg-bg-elevated lg:hidden"
             >
               <Sidebar onNavigate={() => setMobileNavOpen(false)} />

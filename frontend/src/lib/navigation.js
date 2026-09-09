@@ -9,6 +9,8 @@ import {
   BarChart3,
   Bell,
   Settings,
+  FileStack,
+  Users,
 } from 'lucide-react';
 
 // Single source of truth for the authenticated app's navigation.
@@ -86,4 +88,12 @@ export const NAV_ITEMS = [
     icon: Settings,
     description: 'Manage your account and preferences.',
   },
+];
+
+// Only rendered in the sidebar when MOCK_USER.role === 'admin'
+// (see components/layout/Sidebar.jsx). Stage B makes this a real,
+// server-enforced role instead of a local flag.
+export const ADMIN_NAV_ITEMS = [
+  { id: 'admin-content', path: 'admin/content', label: 'Content', icon: FileStack },
+  { id: 'admin-users', path: 'admin/users', label: 'Users', icon: Users },
 ];

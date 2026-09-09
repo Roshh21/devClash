@@ -7,7 +7,7 @@ import LeaderboardTable from '../components/rankings/LeaderboardTable';
 import RankingsSkeleton from '../components/rankings/RankingsSkeleton';
 import { useMockLoading } from '../lib/useMockLoading';
 import { GLOBAL_LEADERBOARD, FRIENDS_LEADERBOARD, SEASON_LEADERBOARD } from '../lib/mockLeaderboard';
-import { slideUp, staggerContainer } from '../lib/motion';
+import { slideUp, staggerContainer, tabContentTransition } from '../lib/motion';
 
 const TABS = [
   { id: 'global', label: 'Global' },
@@ -60,10 +60,10 @@ export default function RankingsPage() {
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
+              initial={tabContentTransition.initial}
+              animate={tabContentTransition.animate}
+              exit={tabContentTransition.exit}
+              transition={tabContentTransition.transition}
             >
               <div className="p-4 sm:p-5">
                 <LeaderboardTable players={pageItems} />

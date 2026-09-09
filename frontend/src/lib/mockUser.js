@@ -8,4 +8,8 @@ export const MOCK_USER = {
   rating: 1523,
   league: 'Diamond II',
   tagline: 'Building. Learning. Competing.',
+  // Gates the Admin sidebar section (see components/layout/Sidebar.jsx).
+  // Set to 'user' to verify the admin section correctly disappears —
+  // Stage B replaces this hardcoded flag with a real enforced role.
+  role: 'admin',
 };

@@ -1,5 +1,6 @@
 import { Coffee } from 'lucide-react';
 import Card from '../ui/Card';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
 // A CSS/SVG-only stand-in for a "developer workspace" photo: a mock
 // code editor window plus a small floating note, both built from the
@@ -35,14 +36,15 @@ const CODE_LINES = [
 ];
 
 export default function CodeWindowMock() {
+  const reduced = useReducedMotion();
   const lastLine = CODE_LINES.length - 1;
 
   return (
     <div className="relative">
       <Card
-        initial={{ opacity: 0, y: 24, rotate: -1 }}
+        initial={{ opacity: 0, y: reduced ? 0 : 24, rotate: -1 }}
         animate={{ opacity: 1, y: 0, rotate: -1 }}
-        transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: reduced ? 0 : 0.6, ease: [0.4, 0, 0.2, 1] }}
         className="relative overflow-hidden"
       >
         <div className="flex items-center gap-2 border-b border-glass px-4 py-3">
@@ -68,9 +70,9 @@ export default function CodeWindowMock() {
       </Card>
 
       <Card
-        initial={{ opacity: 0, y: 16, rotate: 3 }}
+        initial={{ opacity: 0, y: reduced ? 0 : 16, rotate: 3 }}
         animate={{ opacity: 1, y: 0, rotate: 3 }}
-        transition={{ duration: 0.6, delay: 0.2, ease: [0.4, 0, 0.2, 1] }}
+        transition={{ duration: reduced ? 0 : 0.6, delay: reduced ? 0 : 0.2, ease: [0.4, 0, 0.2, 1] }}
         className="absolute -bottom-6 -left-6 hidden w-48 p-4 sm:block"
       >
         <Coffee size={16} className="mb-2 text-accent" />

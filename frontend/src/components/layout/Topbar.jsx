@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Bell, ChevronDown, LogOut, Menu, Search, Settings, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, Menu, Search, Settings, UserRound } from 'lucide-react';
 import ThemeToggle from '../ui/ThemeToggle';
+import NotificationBell from './NotificationBell';
 import { MOCK_USER } from '../../lib/mockUser';
 import { cn } from '../../lib/utils';
+import { dropdownMenu } from '../../lib/motion';
 
 export default function Topbar({ onOpenMobileNav }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -35,16 +37,7 @@ export default function Topbar({ onOpenMobileNav }) {
       <div className="ml-auto flex items-center gap-2">
         <ThemeToggle />
 
-        <NavLink
-          to="notifications"
-          aria-label="Notifications"
-          className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-glass bg-surface text-primary transition-colors hover:bg-surface-strong"
-        >
-          <Bell size={16} />
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-accent-contrast">
-            3
-          </span>
-        </NavLink>
+        <NotificationBell />
 
         <div className="relative">
           <button
@@ -64,10 +57,10 @@ export default function Topbar({ onOpenMobileNav }) {
               <>
                 <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
                 <motion.div
-                  initial={{ opacity: 0, y: -8, scale: 0.97 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                  transition={{ duration: 0.15 }}
+                  initial={dropdownMenu.initial}
+                  animate={dropdownMenu.animate}
+                  exit={dropdownMenu.exit}
+                  transition={dropdownMenu.transition}
                   className="absolute right-0 z-20 mt-2 w-48 rounded-xl border border-glass bg-bg-elevated p-1.5 shadow-glass backdrop-blur-glass"
                 >
                   <NavLink

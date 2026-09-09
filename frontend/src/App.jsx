@@ -13,6 +13,11 @@ import PracticePage from './pages/PracticePage';
 import ChallengePlayerPage from './pages/ChallengePlayerPage';
 import QuickPlayPage from './pages/QuickPlayPage';
 import RankingsPage from './pages/RankingsPage';
+import FriendsPage from './pages/FriendsPage';
+import NotificationsPage from './pages/NotificationsPage';
+import AdminContentPage from './pages/AdminContentPage';
+import AdminChallengeFormPage from './pages/AdminChallengeFormPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import { NAV_ITEMS } from './lib/navigation';
 
 // Routes inside the same group don't retrigger the outer page-fade
@@ -80,6 +85,11 @@ export default function App() {
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="admin" element={<Navigate to="/app/admin/content" replace />} />
+          <Route path="admin/content" element={<AdminContentPage />} />
+          <Route path="admin/content/new" element={<AdminChallengeFormPage />} />
+          <Route path="admin/content/:challengeId/edit" element={<AdminChallengeFormPage />} />
+          <Route path="admin/users" element={<AdminUsersPage />} />
           {NAV_ITEMS.map((item) => {
             if (item.id === 'quick-play') return null;
             if (item.id === 'dashboard') {
@@ -90,6 +100,12 @@ export default function App() {
             }
             if (item.id === 'rankings') {
               return <Route key={item.id} path={item.path} element={<RankingsPage />} />;
+            }
+            if (item.id === 'friends') {
+              return <Route key={item.id} path={item.path} element={<FriendsPage />} />;
+            }
+            if (item.id === 'notifications') {
+              return <Route key={item.id} path={item.path} element={<NotificationsPage />} />;
             }
             return <Route key={item.id} path={item.path} element={<StubPage {...item} />} />;
           })}

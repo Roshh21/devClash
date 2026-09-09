@@ -1,19 +1,20 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Award, BarChart3, Clock, Info, Pencil, Shield } from 'lucide-react';
+import { Award, BarChart3, Clock, Pencil, Shield } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import Tabs from '../components/ui/Tabs';
 import Skeleton from '../components/ui/Skeleton';
 import StatTile from '../components/ui/StatTile';
+import InlineNotice from '../components/ui/InlineNotice';
 import EditProfileModal from '../components/profile/EditProfileModal';
 import EmptyTabState from '../components/ui/EmptyTabState';
 import { useMockLoading } from '../lib/useMockLoading';
 import { useCountUp } from '../lib/useCountUp';
 import { MOCK_USER } from '../lib/mockUser';
 import { PROFILE_STATS, FAVORITE_CATEGORIES, PROFILE_QUOTE } from '../lib/mockProfile';
-import { slideUp, staggerContainer } from '../lib/motion';
+import { slideUp, staggerContainer, tabContentTransition } from '../lib/motion';
 
 const TABS = [
   { id: 'overview', label: 'Overview' },
@@ -80,22 +81,11 @@ export default function ProfilePage() {
               </Button>
             </div>
 
-            <AnimatePresence>
-              {savedNotice && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                  animate={{ opacity: 1, height: 'auto', marginTop: 20 }}
-                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="overflow-hidden"
-                >
-                  <div className="flex items-start gap-2 rounded-xl border border-[var(--border-accent)] bg-[var(--tint-accent)] px-4 py-3 text-sm text-accent">
-                    <Info size={16} className="mt-0.5 shrink-0" />
-                    <span>Profile editing isn&rsquo;t wired up yet — nothing was actually saved.</span>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <InlineNotice
+              message={
+                savedNotice ? "Profile editing isn't wired up yet — nothing was actually saved." : null
+              }
+            />
 
             <div className="mt-8">
               <Tabs tabs={TABS} active={activeTab} onChange={setActiveTab} />
@@ -103,10 +93,10 @@ export default function ProfilePage() {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeTab}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ duration: 0.2 }}
+                  initial={tabContentTransition.initial}
+                  animate={tabContentTransition.animate}
+                  exit={tabContentTransition.exit}
+                  transition={tabContentTransition.transition}
                   className="pt-6"
                 >
                   {activeTab === 'overview' && (

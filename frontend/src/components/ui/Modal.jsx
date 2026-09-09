@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { modalBackdrop, modalPanel } from '../../lib/motion';
 
 export default function Modal({ open, onClose, title, children, className }) {
   useEffect(() => {
@@ -24,10 +25,10 @@ export default function Modal({ open, onClose, title, children, className }) {
       {open && (
         <motion.div
           className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          initial={modalBackdrop.initial}
+          animate={modalBackdrop.animate}
+          exit={modalBackdrop.exit}
+          transition={modalBackdrop.transition}
         >
           <motion.div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -38,10 +39,10 @@ export default function Modal({ open, onClose, title, children, className }) {
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            initial={{ opacity: 0, scale: 0.96, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 12 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+            initial={modalPanel.initial}
+            animate={modalPanel.animate}
+            exit={modalPanel.exit}
+            transition={modalPanel.transition}
             className={cn(
               'relative z-10 w-full max-w-md rounded-2xl border border-glass bg-bg-elevated p-6 shadow-glass backdrop-blur-glass',
               className

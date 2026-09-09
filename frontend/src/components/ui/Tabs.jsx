@@ -1,9 +1,11 @@
 import { useId, useState } from 'react';
 import { motion } from 'framer-motion';
 import { cn } from '../../lib/utils';
+import { useReducedMotion } from '../../lib/useReducedMotion';
 
 export default function Tabs({ tabs, active: controlledActive, defaultTab, onChange, className }) {
   const id = useId();
+  const reduced = useReducedMotion();
   const [internalActive, setInternalActive] = useState(defaultTab ?? tabs[0]?.id);
   const isControlled = controlledActive !== undefined;
   const active = isControlled ? controlledActive : internalActive;
@@ -30,7 +32,7 @@ export default function Tabs({ tabs, active: controlledActive, defaultTab, onCha
             <motion.div
               layoutId={`tabs-underline-${id}`}
               className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-accent"
-              transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+              transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 400, damping: 32 }}
             />
           )}
         </button>

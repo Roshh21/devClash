@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Code2 } from 'lucide-react';
 import Button from '../ui/Button';
 import ThemeToggle from '../ui/ThemeToggle';
+import { heightExpand } from '../../lib/motion';
 
 const NAV_LINKS = [
   { label: 'Features', href: '#features' },
@@ -74,10 +75,10 @@ export default function Navbar() {
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            initial={heightExpand.initial}
+            animate={heightExpand.animate}
+            exit={heightExpand.exit}
+            transition={heightExpand.transition}
             className="overflow-hidden border-t border-glass md:hidden"
           >
             <div className="flex flex-col gap-4 px-4 py-5">

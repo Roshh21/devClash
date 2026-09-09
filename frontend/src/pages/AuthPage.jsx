@@ -7,7 +7,6 @@ import {
   Eye,
   EyeOff,
   Globe,
-  Info,
   Lock,
   Mail,
   MessageCircle,
@@ -20,7 +19,8 @@ import Input from '../components/ui/Input';
 import Tabs from '../components/ui/Tabs';
 import Checkbox from '../components/ui/Checkbox';
 import ThemeToggle from '../components/ui/ThemeToggle';
-import { slideUp } from '../lib/motion';
+import InlineNotice from '../components/ui/InlineNotice';
+import { slideUp, tabContentTransition } from '../lib/motion';
 
 const SOCIAL_PROVIDERS = [
   { id: 'google', label: 'Google', icon: Globe },
@@ -138,10 +138,10 @@ export default function AuthPage() {
             <AnimatePresence mode="wait">
               <motion.div
                 key={mode}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.2 }}
+                initial={tabContentTransition.initial}
+                animate={tabContentTransition.animate}
+                exit={tabContentTransition.exit}
+                transition={tabContentTransition.transition}
               >
                 <h1 className="text-2xl font-bold text-primary">
                   {mode === 'login' ? 'Welcome back' : 'Create your account'}
@@ -253,22 +253,7 @@ export default function AuthPage() {
                   </Button>
                 </form>
 
-                <AnimatePresence>
-                  {notice && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                      animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
-                      exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex items-start gap-2 rounded-xl border border-[var(--border-accent)] bg-[var(--tint-accent)] px-4 py-3 text-sm text-accent">
-                        <Info size={16} className="mt-0.5 shrink-0" />
-                        <span>{notice}</span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <InlineNotice message={notice} />
 
                 <div className="my-6 flex items-center gap-3">
                   <div className="h-px flex-1 bg-[var(--color-border)]" />

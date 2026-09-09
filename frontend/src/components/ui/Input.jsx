@@ -2,7 +2,7 @@ import { forwardRef, useId } from 'react';
 import { cn } from '../../lib/utils';
 
 const Input = forwardRef(function Input(
-  { label, error, icon, rightElement, className, id, ...rest },
+  { label, error, icon, rightElement, mono = false, className, id, ...rest },
   ref
 ) {
   const generatedId = useId();
@@ -27,6 +27,7 @@ const Input = forwardRef(function Input(
           className={cn(
             'w-full rounded-xl border bg-surface px-4 py-2.5 text-sm text-primary placeholder:text-tertiary transition-colors',
             'focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent',
+            mono && 'font-mono text-[13px]',
             icon && 'pl-10',
             rightElement && 'pr-10',
             error ? 'border-danger' : 'border-glass',
