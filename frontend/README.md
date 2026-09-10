@@ -1,17 +1,18 @@
 # DevClash — Frontend
 
-React + Vite single-page app for DevClash. As of Stage B1–B3, auth (`/login`, `/signup`, and every
-`/app/*` route) is wired to a real backend — see `../backend`. Everything past login is still
-static or hand-written mock data. See `../docs/IMPLEMENTATION.md` for the full implementation
-record.
+React + Vite single-page app for DevClash. As of Stage B1–B6, auth (`/login`, `/signup`, and every
+`/app/*` route) and admin user-management (`/app/admin/users`) are wired to a real backend — see
+`../backend`. Everything else past login is still static or hand-written mock data. See
+`../docs/IMPLEMENTATION.md` for the full implementation record.
 
 ## Stack
 
 - React 19 + Vite
 - Tailwind CSS (custom design tokens via CSS variables)
 - Framer Motion (animation)
-- Zustand (theme, and now real auth session state — `store/authStore.js`)
-- React Router (with a real `RequireAuth` guard on every `/app/*` route)
+- Zustand (theme, and real auth session state — `store/authStore.js`)
+- React Router (`RequireAuth` guards every `/app/*` route; `RequireAdmin` additionally guards
+  `/app/admin/*`)
 - lucide-react (icons)
 - @monaco-editor/react (code editor in the challenge player)
 
@@ -40,9 +41,10 @@ src/
   components/
     ui/            Reusable, theme-aware primitives (Button, Input, Textarea, Card, Badge, Tabs,
                     Modal, Skeleton, ThemeToggle, Select, ProgressRing, ProgressBar, Sparkline,
-                    Pagination, InlineNotice, EmptyTabState, StatTile, Checkbox)
+                    Pagination, InlineNotice — tone='info'|'danger', EmptyTabState, StatTile,
+                    Checkbox)
     layout/        Navbar, Footer, PageTransition, AppShell, Sidebar, Topbar, NotificationBell
-    auth/          RequireAuth (route guard)
+    auth/          RequireAuth (session guard), RequireAdmin (role guard)
     landing/       Landing-page-only sections (Hero, FeatureStrip, CodeWindowMock)
     dashboard/     Dashboard-only sections
     profile/       Profile-only sections
@@ -52,11 +54,12 @@ src/
     rankings/      Rankings-only sections
     social/        Friends-only sections
     notifications/ Notification row + skeleton
-    admin/         Admin-only sections
-  pages/           Route-level screens
-  store/           Zustand stores — themeStore.js, authStore.js (real session)
-  lib/             Motion presets, hooks, mock data files, api.js (backend fetch wrapper),
-                    useCurrentUser.js (real identity + still-mocked gamification fields)
+    admin/         ConfirmActionModal (real async confirm), AdminTableSkeleton, AdminFormSkeleton
+  pages/           Route-level screens (AdminUsersPage fetches real data as of Stage B5)
+  store/           Zustand stores — themeStore.js, authStore.js (real session + sessionMessage)
+  lib/             Motion presets, hooks, mock data files, api.js (backend fetch wrapper — also
+                    owns the global session-invalidation handler), useCurrentUser.js (real
+                    identity + still-mocked gamification fields), useDebouncedValue.js
   styles/          Design tokens (tokens.css) and global styles (globals.css)
 ```
 
@@ -71,9 +74,11 @@ elsewhere.
 See `../docs/IMPLEMENTATION.md` for the full, up-to-date routing table. Quick reference: `/`
 (landing), `/styleguide` (design system), `/login`/`/signup` (shared auth card — real signup/login,
 redirects to `/app/dashboard` if already logged in), `/app/dashboard`, `/app/profile`,
-`/app/practice`, `/app/rankings`, `/app/friends`, `/app/notifications`, and `/app/admin/*` (real
-mock content; admin *routes* are still gated by a mock role flag pending Stage B4 — see
-`docs/IMPLEMENTATION.md`), `/app/challenge/:id` and `/app/quick-play` (full-screen flows, own
-layout, no sidebar), and the remaining `/app/*` routes (Team Mode, Challenges, Statistics,
-Settings — still placeholder screens). Every `/app/*` route requires a real session — visiting one
-while logged out redirects to `/login`.
+`/app/practice`, `/app/rankings`, `/app/friends`, `/app/notifications`, `/app/admin/content*` (mock
+content, admin only), `/app/admin/users` (real data and actions, admin only), `/app/challenge/:id`
+and `/app/quick-play` (full-screen flows, own layout, no sidebar), and the remaining `/app/*`
+routes (Team Mode, Challenges, Statistics, Settings — still placeholder screens). Every `/app/*`
+route requires a real session (`RequireAuth` — visiting one while logged out redirects to
+`/login`); every `/app/admin/*` route additionally requires the real admin role (`RequireAdmin` —
+redirects a non-admin to `/app/dashboard` instead). Get your own admin account by signing up, then
+running `npm run seed:admin -- your@email.com` in `../backend`.

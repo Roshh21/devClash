@@ -1,7 +1,6 @@
 import { NavLink, Link } from 'react-router-dom';
 import { ChevronsLeft, ChevronsRight, Code2, ShieldCheck } from 'lucide-react';
 import { NAV_ITEMS, ADMIN_NAV_ITEMS } from '../../lib/navigation';
-import { MOCK_USER } from '../../lib/mockUser';
 import { useCurrentUser } from '../../lib/useCurrentUser';
 import { cn } from '../../lib/utils';
 
@@ -39,13 +38,13 @@ export default function Sidebar({ collapsed = false, onToggleCollapse, onNavigat
           </NavLink>
         ))}
 
-        {/* Deliberately still gated on the mock flag, not the real
-            authenticated role — Stage B4 ("Roles & admin authorization")
-            is what swaps this to a server-verified role and adds a way
-            to actually become an admin. Until then every real signup
-            defaults to 'user', so leaving this on the mock flag is what
-            keeps the Admin panel demoable in the meantime. */}
-        {MOCK_USER.role === 'admin' && (
+        {/* Stage B4: real, server-enforced role — requireAdmin on the
+            backend rejects non-admins even if this check were somehow
+            bypassed, and RequireAdmin (components/auth/RequireAdmin.jsx)
+            guards direct navigation to /app/admin/* the same way this
+            guards visibility. Bootstrap the first admin with
+            `npm run seed:admin -- you@example.com` in backend/. */}
+        {currentUser.role === 'admin' && (
           <div className="mt-4 border-t border-glass pt-4">
             {!collapsed && (
               <p className="flex items-center gap-1.5 px-3 pb-2 text-xs font-semibold uppercase tracking-wide text-tertiary">

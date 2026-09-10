@@ -83,7 +83,24 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [notice, setNotice] = useState(null);
+  // { message, tone } rather than a bare string — 'danger' for real
+  // auth failures / session-expiry, 'info' for the still-unbuilt
+  // "coming soon" hints (forgot password, social login) below. Seeded
+  // once from any pending sessionMessage (set by authStore.logout()
+  // when the server — not the user — ended the session; see
+  // lib/api.js's unauthorized handler) so a redirect here from
+  // anywhere in the app explains itself instead of showing a blank
+  // form. useState's lazy initializer guarantees this read-and-clear
+  // happens exactly once, on mount.
+  const [notice, setNotice] = useState(() => {
+    const pending = useAuthStore.getState().sessionMessage;
+    if (pending) useAuthStore.setState({ sessionMessage: null });
+    return pending ? { message: pending, tone: 'danger' } : { message: null, tone: 'info' };
+  });
+
+  function showNotice(message, tone = 'info') {
+    setNotice({ message, tone });
+  }
 
   function update(field, value) {
     setValues((v) => ({ ...v, [field]: value }));
@@ -92,7 +109,7 @@ export default function AuthPage() {
   function switchMode(next) {
     setMode(next);
     setErrors({});
-    setNotice(null);
+    setNotice({ message: null, tone: 'info' });
     navigate(next === 'signup' ? '/signup' : '/login', { replace: true });
   }
 
@@ -100,7 +117,7 @@ export default function AuthPage() {
     e.preventDefault();
     const nextErrors = validate(mode, values);
     setErrors(nextErrors);
-    setNotice(null);
+    setNotice({ message: null, tone: 'info' });
     if (Object.keys(nextErrors).length > 0) return;
 
     setSubmitting(true);
@@ -125,7 +142,7 @@ export default function AuthPage() {
     if (result.fieldErrors) {
       setErrors((prev) => ({ ...prev, ...result.fieldErrors }));
     }
-    setNotice(result.message);
+    showNotice(result.message, 'danger');
   }
 
   // A still-valid stored session means there's nothing for this form
@@ -250,7 +267,7 @@ export default function AuthPage() {
                       />
                       <button
                         type="button"
-                        onClick={() => setNotice('Password reset is coming soon.')}
+                        onClick={() => showNotice('Password reset is coming soon.')}
                         className="text-sm font-medium text-accent hover:underline"
                       >
                         Forgot password?
@@ -278,7 +295,7 @@ export default function AuthPage() {
                   </Button>
                 </form>
 
-                <InlineNotice message={notice} />
+                <InlineNotice message={notice.message} tone={notice.tone} />
 
                 <div className="my-6 flex items-center gap-3">
                   <div className="h-px flex-1 bg-[var(--color-border)]" />
@@ -291,7 +308,7 @@ export default function AuthPage() {
                     <button
                       key={id}
                       type="button"
-                      onClick={() => setNotice(`${label} sign-in is coming soon.`)}
+                      onClick={() => showNotice(`${label} sign-in is coming soon.`)}
                       className="flex flex-col items-center gap-1.5 rounded-xl border border-glass bg-surface py-3 text-xs font-medium text-secondary transition-colors hover:bg-surface-strong hover:text-primary"
                     >
                       <Icon size={18} />

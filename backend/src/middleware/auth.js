@@ -8,9 +8,10 @@ import { verifyToken } from '../utils/token.js';
 // blocked accounts. Every /app/* screen's data endpoints from Stage C
 // onward will sit behind this.
 //
-// Stage B4 adds `requireAdmin`, a second middleware layered on top of
-// this one for admin-only routes — this file only establishes *who*
-// the caller is, not what they're allowed to do.
+// Stage B4 added `requireAdmin` (middleware/requireAdmin.js), a second
+// middleware layered on top of this one for admin-only routes — this
+// file only establishes *who* the caller is, not what they're allowed
+// to do.
 export const requireAuth = asyncHandler(async (req, res, next) => {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : null;
@@ -31,7 +32,7 @@ export const requireAuth = asyncHandler(async (req, res, next) => {
     throw new ApiError(401, 'Your account could not be found.');
   }
   if (user.status === 'blocked') {
-    throw new ApiError(403, 'This account has been blocked. Contact support for help.');
+    throw new ApiError(403, 'This account has been blocked. Contact support for help.', undefined, 'ACCOUNT_BLOCKED');
   }
 
   req.user = user;

@@ -30,16 +30,20 @@ const userSchema = new mongoose.Schema(
       required: true,
       select: false,
     },
-    // Stage B4 adds the server-side `requireAdmin` middleware and a
-    // seeding step that actually promotes someone to 'admin' — every
-    // account is a plain 'user' by default until then.
+    // Every signup defaults to 'user' — the only ways to get 'admin'
+    // are the seed script (scripts/seedAdmin.js, for the very first
+    // one) or another admin promoting you via PATCH
+    // /api/admin/users/:id/promote (Stage B5). Enforced server-side by
+    // middleware/requireAdmin.js on every /api/admin/* route.
     role: {
       type: String,
       enum: ['user', 'admin'],
       default: 'user',
     },
-    // Stage B5 adds the admin action that sets this to 'blocked';
-    // the login/auth middleware already respects it either way.
+    // Set via PATCH /api/admin/users/:id/block (Stage B5) — checked by
+    // both login (authController.js) and every authenticated request
+    // (middleware/auth.js), so a block takes effect immediately, not
+    // just on next login.
     status: {
       type: String,
       enum: ['active', 'blocked'],

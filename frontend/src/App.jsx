@@ -4,6 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import PageTransition from './components/layout/PageTransition';
 import AppShell from './components/layout/AppShell';
 import RequireAuth from './components/auth/RequireAuth';
+import RequireAdmin from './components/auth/RequireAdmin';
 import { useAuthStore } from './store/authStore';
 import LandingPage from './pages/LandingPage';
 import StyleGuidePage from './pages/StyleGuidePage';
@@ -96,10 +97,38 @@ export default function App() {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="profile" element={<ProfilePage />} />
           <Route path="admin" element={<Navigate to="/app/admin/content" replace />} />
-          <Route path="admin/content" element={<AdminContentPage />} />
-          <Route path="admin/content/new" element={<AdminChallengeFormPage />} />
-          <Route path="admin/content/:challengeId/edit" element={<AdminChallengeFormPage />} />
-          <Route path="admin/users" element={<AdminUsersPage />} />
+          <Route
+            path="admin/content"
+            element={
+              <RequireAdmin>
+                <AdminContentPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="admin/content/new"
+            element={
+              <RequireAdmin>
+                <AdminChallengeFormPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="admin/content/:challengeId/edit"
+            element={
+              <RequireAdmin>
+                <AdminChallengeFormPage />
+              </RequireAdmin>
+            }
+          />
+          <Route
+            path="admin/users"
+            element={
+              <RequireAdmin>
+                <AdminUsersPage />
+              </RequireAdmin>
+            }
+          />
           {NAV_ITEMS.map((item) => {
             if (item.id === 'quick-play') return null;
             if (item.id === 'dashboard') {

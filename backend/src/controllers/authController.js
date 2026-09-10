@@ -71,7 +71,7 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   if (user.status === 'blocked') {
-    throw new ApiError(403, 'This account has been blocked. Contact support for help.');
+    throw new ApiError(403, 'This account has been blocked. Contact support for help.', undefined, 'ACCOUNT_BLOCKED');
   }
 
   const token = signToken(user._id);

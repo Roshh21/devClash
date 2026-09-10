@@ -5,12 +5,14 @@ what's still unfinished. It reflects the actual code, not a plan.
 
 ## Current state
 
-The frontend is feature-complete end to end for every screen described below. As of Stage B1–B3,
-**authentication is real**: a Node/Express + MongoDB backend now backs signup, login, sessions, and
-protected routes. Everything past login — dashboard, profile, practice, the challenge player, quick
-play, rankings, friends, notifications, admin — is still driven entirely by hand-written mock data;
-those get wired up to real endpoints in later stages (C onward). Nothing has been deployed anywhere
-(see "Deployment" below).
+The frontend is feature-complete end to end for every screen described below. As of Stage B1–B6,
+**authentication and admin user-management are real**: a Node/Express + MongoDB backend now backs
+signup, login, sessions, protected routes, server-enforced admin authorization, and a working
+admin user-management API (block/unblock, promote/demote, remove). Everything else past login —
+dashboard, profile, practice, the challenge player, quick play, rankings, friends, notifications,
+and the admin *content* screens — is still driven entirely by hand-written mock data; those get
+wired up to real endpoints in later stages (C onward). Nothing has been deployed anywhere (see
+"Deployment" below).
 
 ### What works right now
 
@@ -31,7 +33,13 @@ those get wired up to real endpoints in later stages (C onward). Nothing has bee
   back as a field-level error (not a generic toast), and a wrong password shows a generic "invalid
   email or password" message rather than confirming which field was wrong. A network failure (e.g.
   the backend isn't running) shows a clear "can't reach the server" notice instead of hanging.
-  Social login buttons are still inert "coming soon."
+  **As of Stage B6**, real errors (wrong password, duplicate account, blocked account, network
+  failure) render in a distinct red/"danger" tone, while the still-unbuilt "coming soon" hints
+  (forgot password, social login) stay in the original neutral tone — `InlineNotice` gained an
+  optional `tone` prop for this, defaulting to the original look everywhere else it's used. If a
+  session elsewhere in the app was ended by the *server* (expired token, or the account got
+  blocked mid-session) rather than the user clicking "Log out," landing back here shows exactly why
+  instead of a blank form. Social login buttons are still inert "coming soon."
 - An authenticated app shell at `/app/*`, now gated by a real session (`RequireAuth` — see
   `components/auth/RequireAuth.jsx`): visiting any `/app/*` URL without a valid, logged-in session
   redirects to `/login`, and a still-valid session survives a page refresh (checked once against
@@ -41,14 +49,37 @@ those get wired up to real endpoints in later stages (C onward). Nothing has bee
   a "Log out" button that ends the real session and returns to the homepage). The active nav item
   is highlighted. Sidebar/topbar/profile/dashboard all show the real logged-in user's name and
   initials (`lib/useCurrentUser.js`) — rating, league, and tagline still come from the Stage A mock
-  (`lib/mockUser.js`) since the backend has no concept of those yet. The Admin sidebar section is
-  **deliberately still gated on the mock role flag**, not the real one — see the note on that in
-  "Placeholder / not real yet" below.
-- A real backend (`backend/`): Node/Express + MongoDB (Mongoose), with `GET /health` and
-  `POST/GET /api/auth/{signup,login,me,logout}`. Passwords are bcrypt-hashed (never stored or
-  returned in plaintext), sessions are stateless JWTs sent as `Authorization: Bearer <token>` (not
-  cookies — see `backend/README.md` for why), and CORS is restricted to configured origins rather
-  than left open. See `backend/README.md` for setup and a full endpoint reference.
+  (`lib/mockUser.js`) since the backend has no concept of those yet. **As of Stage B4**, the Admin
+  sidebar section is gated on the real, authenticated user's role (not a mock flag anymore), and
+  the four nested `/app/admin/*` routes are wrapped in `RequireAdmin`
+  (`components/auth/RequireAdmin.jsx`), which redirects a non-admin straight to the dashboard
+  instead of showing admin screens that would just fail on every action — see "What's real right
+  now" below for the full B4–B6 rundown. **As of Stage B6**, a session that becomes invalid
+  anywhere in the app (an expired token on any authenticated request, or an account that gets
+  blocked mid-session) triggers an automatic, graceful logout with a clear reason shown on the
+  next visit to `/login` — see `lib/api.js`'s `setUnauthorizedHandler` and `store/authStore.js`'s
+  `sessionMessage`. A plain "you're logged in but not allowed to do that" 403 (e.g. a non-admin
+  hitting an admin endpoint directly) does *not* trigger this — the session stays valid, only the
+  one action fails.
+- A real backend (`backend/`): Node/Express + MongoDB (Mongoose), with `GET /health`,
+  `POST/GET /api/auth/{signup,login,me,logout}`, and (Stage B4–B5) `GET /api/admin/users`
+  (paginated + searchable) plus `PATCH /api/admin/users/:id/{block,unblock,promote,demote}` and
+  `DELETE /api/admin/users/:id` — every admin route requires both a valid session and the admin
+  role (`requireAuth` + `requireAdmin`), checked fresh from the database on every request (the JWT
+  itself carries no role, so a demotion takes effect on that user's very next request, not just
+  their next login). Demoting, blocking, or removing the *only* remaining admin account is rejected
+  with a 400, server-side — there's no way to lock the system out of having an admin, whether by
+  one admin acting on another or an admin acting on themselves. Passwords are bcrypt-hashed (never
+  stored or returned in plaintext), sessions are stateless JWTs sent as `Authorization: Bearer
+  <token>` (not cookies — see `backend/README.md` for why), and CORS is restricted to configured
+  origins rather than left open. Error responses can carry an optional machine-readable `code`
+  (currently just `ACCOUNT_BLOCKED`) alongside the human message, letting the frontend tell "your
+  session just died" apart from "you're logged in fine, just not allowed to do that" even though
+  both can be a 403. There's also a one-off CLI script, `npm run seed:admin -- email@example.com`,
+  the only way to create the very first admin account (every signup defaults to `role: 'user'`, and
+  every admin-management endpoint requires an admin to already be logged in). See
+  `backend/README.md` for setup and a full endpoint reference with `curl` examples for all of the
+  above.
 - A Dashboard screen (`/app/dashboard`) built entirely from one local mock-data file: a greeting
   header with a quote, three action cards (Quick Play, Practice, Team Mode) linking into the app
   shell, four animated stat cards (Rating, Win Rate with a circular progress ring, Streak, Total
@@ -100,24 +131,29 @@ those get wired up to real endpoints in later stages (C onward). Nothing has bee
   notifications, unread count badge, "View all" link) backed by the same data as the full
   Notifications screen (`/app/notifications`), which lists every notification with a "Mark all as
   read" action.
-- A role-gated Admin section, visible in the sidebar only because the mock user's `role` is
-  `'admin'` (verified during development by flipping it to `'user'` and confirming the section
-  disappears and rebuilds cleanly either way):
-  - **Content** (`/app/admin/content`): draft/review/published/archived status counts, a
-    search bar, a status filter, and a table of mock challenges with Edit and Archive actions
-    (Archive opens a confirm modal that ends in a "coming soon" notice — nothing is actually
-    archived).
-  - **New/Edit Challenge** (`/app/admin/content/new`, `/app/admin/content/:id/edit`): a form whose
-    fields change based on the selected challenge type (MCQ options + correct answer, Output
-    code + expected output, Coding starter code + a dynamic add/remove test-case list, Debugging
-    buggy code + expected fix, SQL schema + expected result), plus shared fields (title, category,
-    difficulty, time, description). Fully validated client-side; Save shows a loading state and a
-    "coming soon" notice rather than persisting anything. Edit mode pre-fills what the mock
-    catalogue actually has (title/category/type) and leaves the rest blank, since the catalogue
-    doesn't store full content per entry.
-  - **Users** (`/app/admin/users`): search by name/email, and Block/Unblock, Promote/Demote, and
-    Remove actions, each behind a shared confirm modal that ends in a "coming soon" notice —
-    nothing in the table actually changes.
+- An Admin section, visible in the sidebar only for real admins (Stage B4 — see above) and reached
+  through `RequireAdmin`-guarded routes:
+  - **Users** (`/app/admin/users`) — **fully real as of Stage B5.** A paginated (8 per page),
+    debounced-search (by username or email) table fetched from `GET /api/admin/users`. Block/
+    Unblock, Promote/Demote, and Remove each open a confirm modal whose Confirm button now performs
+    a real API call; on success the table re-fetches from the server (never patched optimistically,
+    so it can't drift from what the backend actually did) and a success toast shows. On failure
+    (e.g. trying to demote or remove the only remaining admin) the modal stays open and shows the
+    server's error inline instead of silently closing. The current user's own row is marked
+    "(you)". Removing the last row on a page beyond the first backs up a page automatically instead
+    of showing an empty table.
+  - **Content** (`/app/admin/content`) — still Stage A mock: draft/review/published/archived status
+    counts, a search bar, a status filter, and a table of mock challenges with Edit and Archive
+    actions (Archive opens a confirm modal that ends in a "coming soon" notice — nothing is
+    actually archived). Becomes real in Stage C.
+  - **New/Edit Challenge** (`/app/admin/content/new`, `/app/admin/content/:id/edit`) — still Stage
+    A mock: a form whose fields change based on the selected challenge type (MCQ options + correct
+    answer, Output code + expected output, Coding starter code + a dynamic add/remove test-case
+    list, Debugging buggy code + expected fix, SQL schema + expected result), plus shared fields
+    (title, category, difficulty, time, description). Fully validated client-side; Save shows a
+    loading state and a "coming soon" notice rather than persisting anything. Edit mode pre-fills
+    what the mock catalogue actually has (title/category/type) and leaves the rest blank, since the
+    catalogue doesn't store full content per entry. Becomes real in Stage C.
 - Scroll-triggered and hover animations (Framer Motion), including a shared page-transition
   wrapper used by every route and a separate inner transition for content inside the app shell, so
   navigating between sidebar items animates just the content area, not the whole shell. Numeric
@@ -131,19 +167,14 @@ those get wired up to real endpoints in later stages (C onward). Nothing has bee
 
 - Social login buttons show a "coming soon" notice instead of doing anything; "Forgot password" is
   the same.
-- There's no `requireAdmin` enforcement on the backend yet, and no way to seed or promote an admin
-  account — that's Stage B4. Until then, the Admin sidebar section is deliberately still gated on
-  `MOCK_USER.role` (`lib/mockUser.js`), not the real authenticated user's role, since every real
-  signup defaults to `role: 'user'` server-side with no seed mechanism yet. Practically: there's
-  still no route guard preventing direct navigation to `/app/admin/*` while logged in as a real
-  (non-admin) user — same limitation as before, now for a slightly different reason. Rating,
-  league, and tagline shown on Profile/Sidebar also still come from that same mock file, since the
-  backend has no concept of them yet (Stage E/K).
-- Dashboard, Profile, Practice, Rankings, Friends, Notifications, and the Admin screens all show
-  fixed mock data from local files under `src/lib/` — nothing is fetched, and every "loading"
-  skeleton is a timer, not a real request.
-- Editing a profile, archiving/creating/editing a challenge, and blocking/promoting/removing a user
-  all end in a "coming soon" notice rather than persisting anything.
+- Rating, league, and tagline shown on Profile/Sidebar still come from the Stage A mock
+  (`lib/mockUser.js`), since the backend has no concept of them yet (Stage E/K).
+- Dashboard, Profile, Practice, Rankings, Friends, Notifications, and the Admin *Content* screens
+  (but not Users — see above) all show fixed mock data from local files under `src/lib/` — nothing
+  is fetched, and every "loading" skeleton is a timer, not a real request.
+- Editing a profile, and archiving/creating/editing a challenge, still end in a "coming soon"
+  notice rather than persisting anything. (Blocking/promoting/demoting/removing a *user* is real
+  now — see above.)
 - Every challenge in Practice opens the **same** mock problem body (a Two-Sum-style example) in
   the player — only the title, difficulty, and completion badge come from the catalogue entry that
   was clicked. Building genuinely unique content for every catalogue entry wasn't in scope here.
@@ -168,10 +199,10 @@ those get wired up to real endpoints in later stages (C onward). Nothing has bee
 
 ### Explicitly out of scope right now
 
-- Role/admin enforcement on the backend, and everything else in Stage B4–B6 (seeding an admin,
-  rate limiting, account lockout, password reset).
+- Rate limiting, account lockout, and password reset (Stage L1) — the rest of Stage B's auth
+  hardening (B4–B6) is done.
 - The question bank, matchmaking, code evaluation, real-time features, and everything else in
-  Stages C onward — `backend/` currently only covers auth.
+  Stages C onward — `backend/` currently only covers auth and admin user-management.
 - `DevClash-Bank/` — empty placeholder, no content (Stage C).
 - Deploying either the frontend or the backend anywhere.
 
@@ -197,7 +228,8 @@ DevClash/
                         Tabs, Modal, Skeleton, ThemeToggle, ProgressRing, ProgressBar, Sparkline,
                         Select, EmptyTabState, StatTile, Pagination, InlineNotice
         layout/        Navbar, Footer, PageTransition, AppShell, Sidebar, Topbar, NotificationBell
-        auth/           RequireAuth (route guard — redirects to /login without a session)
+        auth/           RequireAuth (redirects to /login without a session), RequireAdmin
+                        (redirects to /app/dashboard without the admin role)
         landing/       Hero, FeatureStrip, CodeWindowMock (landing-page-only sections)
         dashboard/     ActionCard, StatCard, DashboardSkeleton
         profile/       EditProfileModal
@@ -207,29 +239,37 @@ DevClash/
         rankings/      LeagueBadge, LeaderboardTable, RankingsSkeleton
         social/        PresenceDot, FriendRow, RequestRow, FriendsSkeleton
         notifications/ NotificationRow, NotificationsSkeleton
-        admin/         ConfirmActionModal, AdminTableSkeleton, AdminFormSkeleton
+        admin/         ConfirmActionModal (async confirm, inline error on failure),
+                        AdminTableSkeleton, AdminFormSkeleton
       pages/           LandingPage, StyleGuidePage, AuthPage, ComingSoonPage, StubPage,
                         DashboardPage, ProfilePage, PracticePage, ChallengePlayerPage,
                         QuickPlayPage, RankingsPage, FriendsPage, NotificationsPage,
-                        AdminContentPage, AdminChallengeFormPage, AdminUsersPage
+                        AdminContentPage, AdminChallengeFormPage, AdminUsersPage (real data as of
+                        Stage B5)
       store/           themeStore.js (theme, persisted to localStorage),
-                        authStore.js (real session — user/token/status, Zustand)
+                        authStore.js (real session — user/token/status/sessionMessage, Zustand)
       lib/             motion.js (Framer Motion presets), useReducedMotion.js, useCountUp.js,
-                        useMockLoading.js, useCountdown.js, utils.js, navigation.js, api.js
-                        (fetch wrapper for the backend), useCurrentUser.js (real identity +
-                        still-mocked gamification fields), mockUser.js, mockDashboard.js,
-                        mockProfile.js, mockChallenges.js, mockChallengeDetail.js,
-                        mockQuickPlay.js, mockLeaderboard.js, mockSocial.js,
-                        mockNotifications.js, mockAdminContent.js, mockAdminUsers.js
+                        useMockLoading.js, useCountdown.js, useDebouncedValue.js (search-input
+                        debounce), utils.js, navigation.js, api.js (fetch wrapper for the
+                        backend — also owns the global session-invalidation handler, Stage B6),
+                        useCurrentUser.js (real identity + still-mocked gamification fields),
+                        mockUser.js, mockDashboard.js, mockProfile.js, mockChallenges.js,
+                        mockChallengeDetail.js, mockQuickPlay.js, mockLeaderboard.js,
+                        mockSocial.js, mockNotifications.js, mockAdminContent.js
+                        (mockAdminUsers.js removed — AdminUsersPage fetches real data as of
+                        Stage B5)
       styles/          tokens.css (design tokens), globals.css
-  backend/             Node/Express + MongoDB API — Stage B1–B3 (auth only so far)
+  backend/             Node/Express + MongoDB API — Stage B1–B6 (auth + admin user-management)
     src/
       config/          env.js (validated env vars), db.js (MongoDB connection)
       models/          User.js
-      controllers/     authController.js
-      routes/          authRoutes.js, healthRoutes.js
-      middleware/      auth.js (requireAuth), errorHandler.js, notFound.js
-      utils/           ApiError.js, asyncHandler.js, token.js (JWT), validators.js
+      controllers/     authController.js, adminUserController.js (list/search/paginate,
+                        block/unblock, promote/demote, remove — with a last-admin guard)
+      routes/          authRoutes.js, adminRoutes.js, healthRoutes.js
+      middleware/      auth.js (requireAuth), requireAdmin.js, errorHandler.js, notFound.js
+      utils/           ApiError.js (statusCode + optional field errors + optional machine
+                        code), asyncHandler.js, token.js (JWT), validators.js
+      scripts/         seedAdmin.js (CLI — the only way to create the first admin account)
       app.js           Express app (no side effects — importable without a DB connection)
       server.js        Entrypoint — connects DB, then listens
   DevClash-Bank/       Empty placeholder — not started
@@ -338,11 +378,11 @@ turned up and were fixed:
 | `/app/rankings`             | App shell — Rankings (real mock content)                       |
 | `/app/friends`              | App shell — Friends (real mock content)                        |
 | `/app/notifications`        | App shell — Notifications (real mock content)                  |
-| `/app/admin` → `.../content`| Redirects into the admin section's default screen (admin only) |
-| `/app/admin/content`        | App shell — Admin content dashboard                            |
-| `/app/admin/content/new`    | App shell — New Challenge form                                 |
-| `/app/admin/content/:id/edit` | App shell — Edit Challenge form                              |
-| `/app/admin/users`          | App shell — Admin user management                              |
+| `/app/admin` → `.../content`| Redirects into the admin section's default screen (admin only — see below) |
+| `/app/admin/content`        | App shell — Admin content dashboard (mock content, admin only) |
+| `/app/admin/content/new`    | App shell — New Challenge form (mock, admin only)              |
+| `/app/admin/content/:id/edit` | App shell — Edit Challenge form (mock, admin only)           |
+| `/app/admin/users`          | App shell — Admin user management (real data/actions, admin only) |
 | `/app/challenge/:id`        | Full-screen challenge player (own layout, no sidebar) — requires a session |
 | `/app/quick-play`           | Full-screen Quick Play flow (own layout, no sidebar) — requires a session |
 | `/app/team-mode`            | App shell — Team Mode stub                                     |
@@ -353,22 +393,33 @@ turned up and were fixed:
 
 Every path prefixed with `/app` is wrapped in `RequireAuth` (`components/auth/RequireAuth.jsx`),
 which checks the session once on app load and redirects unauthenticated visitors to `/login`,
-preserving the originally-requested path so a successful login sends them back there.
+preserving the originally-requested path so a successful login sends them back there. The four
+`/app/admin/*` routes are additionally wrapped in `RequireAdmin` (`components/auth/RequireAdmin.jsx`),
+which redirects a real, logged-in-but-non-admin user to `/app/dashboard` instead. Both are UX
+conveniences layered on top of the actual security boundary, which is server-side
+(`requireAuth`/`requireAdmin` in `backend/src/middleware/`) — a client-side redirect can be
+bypassed by disabling JavaScript or hitting the API directly, but the backend can't be.
 
 ## Known limitations
 
 - No automated tests yet, on either the frontend or the backend.
-- Only auth talks to a real backend — every other screen's data is still hardcoded in components
-  (see "Placeholder / not real yet" above for the full list).
+- Only auth and admin user-management talk to a real backend — every other screen's data is still
+  hardcoded in components (see "Placeholder / not real yet" above for the full list).
 - No live MongoDB connection was available in the environment this backend was built in (no
-  internet access to Atlas, no way to install a local `mongod`), so signup/login were verified
-  three other ways instead: (1) booting the real Express app without a DB connection and exercising
-  routing, validation, JWT middleware, and CORS against it directly; (2) testing JWT sign/verify and
-  bcrypt hash/compare in isolation; (3) running the frontend's actual `authStore` against a mocked
-  `fetch` through 8 scenarios (signup, duplicate email, wrong password, login, session-restore on
-  refresh, expired-token cleanup, idempotent init). An actual signup → login → `/me` round trip
-  against a real Atlas cluster still hasn't been run — see the curl commands in
-  `backend/README.md` to do that yourself.
+  internet access to Atlas, no way to install a local `mongod`), so the backend was verified
+  several other ways instead: (1) booting the real Express app without a DB connection and
+  exercising routing, validation, JWT/role middleware, and CORS directly against every route
+  (auth *and* admin) — including confirming all six `/api/admin/*` endpoints correctly 401 with no
+  token, before ever touching the database; (2) testing JWT sign/verify, bcrypt hash/compare, and
+  the search-query regex-escaping helper in isolation; (3) running the frontend's actual
+  `authStore` against a mocked `fetch` through 8 signup/login/session-restore scenarios (Stage
+  B1–B3) plus 6 more Stage B6 scenarios (a 401 with a token auto-logs-out with the right message; a
+  403 tagged `ACCOUNT_BLOCKED` does the same; a *plain* 403 — e.g. a non-admin hitting an admin
+  route — correctly does NOT log out; a network failure during session-restore preserves the stored
+  token instead of discarding it; a retry after the network recovers succeeds using that preserved
+  token). An actual signup → login → promote-to-admin → manage-users round trip against a real
+  Atlas cluster still hasn't been run — see the curl commands in `backend/README.md` to do that
+  yourself.
 - Icons and copy are illustrative rather than final production copy.
 - The challenge player's Monaco editor loads from a CDN at runtime (the standard way
   `@monaco-editor/react` works without extra bundler config) — it needs the end user's browser to
@@ -378,10 +429,10 @@ preserving the originally-requested path so a successful login sends them back t
 - There's no browser in this environment, so nothing here was visually screenshotted or manually
   clicked through — verification relied on a clean production build, a clean lint pass, serving the
   build and checking every route returns the right content over HTTP, and close manual reading of
-  every animated/interactive component (including deliberately testing the admin role flag both
-  ways). A real frame-rate check on an actual machine, and a plain look at the UI, are both still
-  worth doing before treating this as final.
-- The production bundle is a single ~535KB (~161KB gzipped) JS file; Vite's build warns about this.
+  every animated/interactive component (including testing the admin nav/route gate with both an
+  admin-shaped and a non-admin-shaped mocked session). A real frame-rate check on an actual
+  machine, and a plain look at the UI, are both still worth doing before treating this as final.
+- The production bundle is a single ~540KB (~163KB gzipped) JS file; Vite's build warns about this.
   Nothing is broken by it, but if load time on a slow connection becomes a concern, the challenge
   player and admin screens are reasonable candidates for `React.lazy()` code-splitting later, since
   they're not needed on first load for most visitors.
@@ -420,6 +471,21 @@ build locally with `npm run preview`. The backend has no build step — `npm sta
   above) — all passed, including the security-conscious bits (generic "invalid email or password"
   on login, no field leaked; duplicate-email signup surfaces the right field error without ever
   flipping the store into an authenticated state).
+- **Backend (Stage B4–B6):** every new/changed source file passes `node --check`. Re-booted
+  `app.js` and hit every auth and admin route with no token — all six `/api/admin/*` endpoints
+  correctly 401 before ever reaching the database, confirming `requireAuth` runs (and rejects)
+  ahead of `requireAdmin` and the route handlers, not after. The search-query regex-escaping
+  helper (`adminUserController.js`) was unit-tested against strings containing regex metacharacters
+  to confirm they can't break out of the pattern. The frontend's `authStore.js` was run through 6
+  more mocked-`fetch` scenarios covering exactly the Stage B6 DoD's edge cases — see "Known
+  limitations" above for the full list — all passed, including the important negative case: a
+  plain 403 (a non-admin token hitting an admin route) does *not* trigger an automatic logout,
+  only a 401 or a 403 explicitly tagged `ACCOUNT_BLOCKED` does. Hit a real `oxlint`
+  `set-state-in-effect` warning while building `AdminUsersPage`'s data-fetching effect (calling an
+  extracted `useCallback`-wrapped fetch function from inside `useEffect`); resolved by inlining a
+  cancellation-safe async IIFE directly in the effect instead — which is React's own documented
+  data-fetching pattern and, as a side effect, added protection against race conditions from rapid
+  search/page changes that the extracted-function version didn't have.
 - `npm run build` completes with no errors on every change described in this document.
 - `npm run lint` (oxlint) reports 0 warnings / 0 errors on the final state.
 - The production build was served locally (`vite preview`) and every route in the table above
@@ -441,9 +507,13 @@ build locally with `npm run preview`. The backend has no build step — `npm sta
   `setTimeout` in a `useEffect` keyed on the current phase, so navigating away or manually changing
   phase (Rematch, Cancel, Back to Dashboard) always runs the previous effect's cleanup first —
   there's no path where a stale timer fires after the user has already left that phase.
-- The admin role gate (`MOCK_USER.role`) was manually flipped between `'admin'` and `'user'` and
-  rebuilt both ways to confirm the sidebar section actually appears/disappears and nothing else
-  breaks, before being set back to `'admin'` for the delivered default.
+- Stage A verified the admin gate by manually flipping `MOCK_USER.role` between `'admin'` and
+  `'user'` and rebuilding both ways. As of Stage B4 the gate reads the real authenticated role
+  instead, which can't be flipped by hand the same way — verified by code review instead (both
+  `Sidebar.jsx`'s visibility check and `RequireAdmin.jsx`'s redirect read the same
+  `useCurrentUser()`/`authStore` source, so they can't disagree with each other) plus the backend
+  boot-test confirming `requireAdmin` actually rejects a request before it reaches any admin
+  route handler.
 - A dedicated motion audit (see "Motion & reduced-motion audit" above) went through every
   `transition`/`animate` usage in the codebase via a full-project search, not just a visual
   once-over, and fixed every instance found that didn't already respect reduced motion.

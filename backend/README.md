@@ -1,9 +1,8 @@
 # DevClash — Backend
 
-Stage B1–B3: a real Node/Express API backing the frontend's auth screens.
-Everything else (question bank, matchmaking, evaluation, real-time...) grows
-into this over later stages — see `../docs/IMPLEMENTATION.md` for the
-project-wide picture.
+Stage B1–B6: a real Node/Express API backing the frontend's auth and admin-user-management
+screens. Everything else (question bank, matchmaking, evaluation, real-time...) grows into this
+over later stages — see `../docs/IMPLEMENTATION.md` for the project-wide picture.
 
 ## What's real right now
 
@@ -14,19 +13,34 @@ project-wide picture.
   restore a session on page refresh)
 - `POST /api/auth/logout` — no-op today (stateless JWT); exists so the
   frontend always has something to call
+- `GET /api/admin/users?search=&page=&limit=` — paginated/searchable user list (admin only)
+- `PATCH /api/admin/users/:id/block` / `.../unblock` — toggle account access (admin only)
+- `PATCH /api/admin/users/:id/promote` / `.../demote` — toggle the admin role (admin only)
+- `DELETE /api/admin/users/:id` — permanently remove an account (admin only)
+
+Every `/api/admin/*` route requires a valid session **and** the admin role
+(`requireAuth` + `requireAdmin`, both in `src/middleware/`). Demoting, blocking, or removing the
+only remaining admin account is rejected with a 400 — there's no way to lock the system out of
+having an admin.
 
 Auth is JWT via `Authorization: Bearer <token>` — **not** a cookie. That's a
 deliberate choice: the frontend (Vercel) and this API will very likely end up
 on different domains once deployed (Stage L8), and Bearer tokens sidestep
 cross-site cookie/SameSite complications entirely. The token is signed with
-`JWT_SECRET` and carries just the user id (`sub` claim).
+`JWT_SECRET` and carries just the user id (`sub` claim) — role isn't in the token, so
+`requireAdmin` always checks the *current* role from the database, not a snapshot from login time.
+
+Error responses look like `{ message, errors?, code? }`. `errors` is per-field (matching the
+frontend's inline validation), used on 400s. `code` is a machine-readable tag used only when the
+frontend needs to distinguish two errors that share a status code — right now just
+`ACCOUNT_BLOCKED` on a 403, which the frontend treats as "your session just died" and logs you out
+with that message, versus a plain 403 (e.g. `requireAdmin` rejecting a non-admin) which leaves you
+logged in and just shows the error.
 
 ## What's not real yet
 
-- No `requireAdmin` / role enforcement on the server (Stage B4)
-- No way to seed or promote an admin account (Stage B4)
-- No rate limiting, no account lockout, no password reset (Stage B6 / L1)
-- No question bank, matchmaking, or anything else outside auth — those
+- No rate limiting, no account lockout, no password reset (Stage L1)
+- No question bank, matchmaking, or anything else outside auth/admin-users — those
   routes don't exist yet
 
 ## Setup
@@ -61,6 +75,16 @@ cross-site cookie/SameSite complications entirely. The token is signed with
 5. **Point the frontend at it** — in `../frontend`, copy `.env.example` to
    `.env` (it already defaults to `http://localhost:4000`, matching this
    API's default port).
+6. **Get your first admin account.** There's no signup flow or API endpoint that creates an
+   admin — every signup defaults to `role: 'user'`, and every admin endpoint requires an admin to
+   already be logged in. Break that chicken-and-egg problem once:
+   - Sign up for a real account through the frontend (`/signup`).
+   - Promote it:
+     ```bash
+     npm run seed:admin -- you@example.com
+     ```
+   - Refresh the frontend (or log out and back in) — the Admin sidebar section only appears
+     after the app re-checks your role, which happens on load, not automatically mid-session.
 
 If step 4 fails immediately with a MongoDB connection error, double-check
 `MONGODB_URI` — in particular that your Atlas user's password doesn't need
@@ -108,12 +132,43 @@ Then check MongoDB Atlas directly (Collections tab) — you should see a
 `users` collection with your account, and `passwordHash` should be a bcrypt
 hash, never the plaintext password.
 
+**Admin endpoints** (after running `npm run seed:admin` on your account, per step 6 above — paste
+a *fresh* token from logging in again after seeding, since the one from before you were promoted
+still works fine, but grabbing a new one is a good sanity check that login still reflects your
+current role each time):
+
+```bash
+# List users
+curl "http://localhost:4000/api/admin/users?limit=5" \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE"
+
+# Search
+curl "http://localhost:4000/api/admin/users?search=roshni" \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE"
+
+# Block/unblock, promote/demote (swap in a real user id from the list above)
+curl -X PATCH "http://localhost:4000/api/admin/users/PASTE_USER_ID/block" \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE"
+
+# A non-admin token hitting any of these should get a plain 403 "Admins only."
+# — sign up a second, throwaway account and try it with that one's token.
+
+# Removing/demoting the only admin account should be rejected with a 400,
+# even as that same admin — try it on yourself if you're the only admin:
+curl -X DELETE "http://localhost:4000/api/admin/users/YOUR_OWN_ADMIN_ID" \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE"
+# → 400, "Can't remove the only remaining admin account."
+```
+
 **From the actual frontend:** run `npm run dev` in `../frontend` with both
 servers up, visit `/signup`, create an account, and you should land on
 `/app/dashboard` with your real username in the sidebar/topbar. Refresh the
 page — you should stay logged in (this is `GET /api/auth/me` restoring the
 session from the stored token). Log out, then try visiting `/app/dashboard`
-directly — you should get bounced to `/login`.
+directly — you should get bounced to `/login`. After seeding yourself as admin and refreshing,
+the Admin section appears in the sidebar and `/app/admin/users` shows your real accounts with
+working Block/Promote/Remove actions; visiting that URL as a non-admin account redirects to the
+dashboard instead of showing the (functionally broken, for them) admin screen.
 
 ## Project structure
 
@@ -122,12 +177,13 @@ backend/
   src/
     config/       # env loading + validation, MongoDB connection
     models/       # Mongoose schemas (User for now)
-    controllers/  # request handlers (authController)
-    routes/       # route → controller wiring
-    middleware/   # requireAuth, error handling, 404
+    controllers/  # request handlers (authController, adminUserController)
+    routes/       # route → controller wiring (authRoutes, adminRoutes, healthRoutes)
+    middleware/   # requireAuth, requireAdmin, errorHandler, notFound
     utils/        # ApiError, asyncHandler, JWT sign/verify, validators
-    app.js        # Express app (importable without a DB connection)
-    server.js     # entrypoint — connects DB, then listens
+    scripts/      # seedAdmin.js — the only way to create the first admin account
+    app.js        # Express app (no side effects — importable without a DB connection)
+    server.js     # Entrypoint — connects DB, then listens
   .env.example
 ```
 
