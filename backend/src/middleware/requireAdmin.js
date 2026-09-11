@@ -3,7 +3,8 @@ import { ApiError } from '../utils/ApiError.js';
 // Stage B4: the real, server-enforced counterpart to the frontend's
 // mock `MOCK_USER.role === 'admin'` sidebar gate. Always used after
 // requireAuth (needs req.user already populated) — see
-// routes/adminRoutes.js, which applies both as `router.use(...)`.
+// routes/adminUserRoutes.js and routes/adminChallengeRoutes.js, which
+// each apply both as `router.use(...)`.
 //
 // Deliberately a plain 403 with no `code` — unlike requireAuth's
 // blocked-account rejection, this does NOT mean the caller's session

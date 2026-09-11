@@ -7,7 +7,7 @@ import { User } from '../models/User.js';
 // flow or API endpoint that creates one (every signup defaults to
 // 'user' — see models/User.js and controllers/authController.js), and
 // every existing admin-management endpoint requires an admin to
-// already be logged in (routes/adminRoutes.js). Something has to
+// already be logged in (routes/adminUserRoutes.js). Something has to
 // break that chicken-and-egg problem — this is it.
 //
 // Usage (from backend/):

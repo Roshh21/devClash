@@ -1,8 +1,8 @@
 # DevClash — Backend
 
-Stage B1–B6: a real Node/Express API backing the frontend's auth and admin-user-management
-screens. Everything else (question bank, matchmaking, evaluation, real-time...) grows into this
-over later stages — see `../docs/IMPLEMENTATION.md` for the project-wide picture.
+Stage B1–B6 + C1–C2: a real Node/Express API backing the frontend's auth, admin-user-management,
+and admin-challenge-authoring screens. Everything else (matchmaking, evaluation, real-time...)
+grows into this over later stages — see `../docs/IMPLEMENTATION.md` for the project-wide picture.
 
 ## What's real right now
 
@@ -17,11 +17,22 @@ over later stages — see `../docs/IMPLEMENTATION.md` for the project-wide pictu
 - `PATCH /api/admin/users/:id/block` / `.../unblock` — toggle account access (admin only)
 - `PATCH /api/admin/users/:id/promote` / `.../demote` — toggle the admin role (admin only)
 - `DELETE /api/admin/users/:id` — permanently remove an account (admin only)
+- `POST /api/admin/challenges` — create a draft challenge (admin only)
+- `GET /api/admin/challenges/:id` — fetch one challenge, for the Edit form (admin only)
+- `PATCH /api/admin/challenges/:id` — update a challenge, full re-validation (admin only)
 
 Every `/api/admin/*` route requires a valid session **and** the admin role
 (`requireAuth` + `requireAdmin`, both in `src/middleware/`). Demoting, blocking, or removing the
 only remaining admin account is rejected with a 400 — there's no way to lock the system out of
-having an admin.
+having an admin. Challenges have no such guard to speak of yet — any admin can create/edit any
+challenge, matching the same "any admin can manage anything" convention as user management.
+
+The challenge endpoints implement Stage C1's generic content contract — one schema covering all
+five challenge types (MCQ/Output/Coding/Debugging/SQL), with type-specific validation. See
+`../DevClash-Bank/docs/CHALLENGE_SCHEMA.md` for the full documented contract, and
+`../DevClash-Bank/README.md` for why this content lives in this backend rather than a separate
+service. Every challenge is created as `status: 'draft'` — nothing created here is visible to a
+regular user yet (there's no user-facing retrieval endpoint at all until Stage C4).
 
 Auth is JWT via `Authorization: Bearer <token>` — **not** a cookie. That's a
 deliberate choice: the frontend (Vercel) and this API will very likely end up
@@ -40,8 +51,10 @@ logged in and just shows the error.
 ## What's not real yet
 
 - No rate limiting, no account lockout, no password reset (Stage L1)
-- No question bank, matchmaking, or anything else outside auth/admin-users — those
-  routes don't exist yet
+- No publish/review workflow for challenges yet — every challenge is stuck at `status: 'draft'`
+  forever until Stage C3 implements the real lifecycle transitions
+- No user-facing challenge retrieval (Stage C4) — challenges exist only for admins to create/edit
+- No matchmaking, evaluation, or anything else outside auth/admin — those routes don't exist yet
 
 ## Setup
 
@@ -160,6 +173,35 @@ curl -X DELETE "http://localhost:4000/api/admin/users/YOUR_OWN_ADMIN_ID" \
 # → 400, "Can't remove the only remaining admin account."
 ```
 
+**Challenge endpoints** (same admin token as above):
+
+```bash
+# Create a draft challenge from one of the real, pre-validated samples
+curl -X POST http://localhost:4000/api/admin/challenges \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE" \
+  -d @../DevClash-Bank/samples/arrays-two-sum.coding.json
+# → 201, { challenge: { id, status: "draft", version: 1, content: {...}, ... } }
+
+# Fetch it back (swap in the id from the response above)
+curl http://localhost:4000/api/admin/challenges/PASTE_CHALLENGE_ID \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE"
+
+# Try a deliberately invalid one — an MCQ missing two of its four options
+curl -X POST http://localhost:4000/api/admin/challenges \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE" \
+  -d '{"title":"x","type":"MCQ","category":"x","difficulty":"Easy","description":"x","estimatedTime":"5 min","options":["a","b","",""],"correctOption":0}'
+# → 400, { message: "Please fix the highlighted fields.", errors: { options: "Fill in all four options" } }
+
+# A non-existent or malformed id → 404, not a 500
+curl http://localhost:4000/api/admin/challenges/not-a-real-id \
+  -H "Authorization: Bearer PASTE_ADMIN_TOKEN_HERE"
+```
+
+See `../DevClash-Bank/samples/` for one ready-to-use example per challenge type, and
+`../DevClash-Bank/docs/CHALLENGE_SCHEMA.md` for exactly what each type requires.
+
 **From the actual frontend:** run `npm run dev` in `../frontend` with both
 servers up, visit `/signup`, create an account, and you should land on
 `/app/dashboard` with your real username in the sidebar/topbar. Refresh the
@@ -168,7 +210,11 @@ session from the stored token). Log out, then try visiting `/app/dashboard`
 directly — you should get bounced to `/login`. After seeding yourself as admin and refreshing,
 the Admin section appears in the sidebar and `/app/admin/users` shows your real accounts with
 working Block/Promote/Remove actions; visiting that URL as a non-admin account redirects to the
-dashboard instead of showing the (functionally broken, for them) admin screen.
+dashboard instead of showing the (functionally broken, for them) admin screen. From
+`/app/admin/content`, click "New Challenge" (the dashboard rows themselves are still Stage A mock
+— see `../docs/IMPLEMENTATION.md` — but the New Challenge button isn't) and save one: you should land
+on that challenge's own real Edit page with a "Challenge created." notice, and reloading that page
+should show the same data you entered, fetched fresh from the backend.
 
 ## Project structure
 
@@ -176,11 +222,14 @@ dashboard instead of showing the (functionally broken, for them) admin screen.
 backend/
   src/
     config/       # env loading + validation, MongoDB connection
-    models/       # Mongoose schemas (User for now)
-    controllers/  # request handlers (authController, adminUserController)
-    routes/       # route → controller wiring (authRoutes, adminRoutes, healthRoutes)
+    models/       # Mongoose schemas (User, Challenge)
+    controllers/  # request handlers (authController, adminUserController,
+                  # adminChallengeController)
+    routes/       # route → controller wiring (authRoutes, adminUserRoutes,
+                  # adminChallengeRoutes, healthRoutes)
     middleware/   # requireAuth, requireAdmin, errorHandler, notFound
-    utils/        # ApiError, asyncHandler, JWT sign/verify, validators
+    utils/        # ApiError, asyncHandler, JWT sign/verify, validators,
+                  # challengeValidators (type-aware, mirrors the admin form)
     scripts/      # seedAdmin.js — the only way to create the first admin account
     app.js        # Express app (no side effects — importable without a DB connection)
     server.js     # Entrypoint — connects DB, then listens
@@ -195,6 +244,5 @@ validation, and error handling in isolation before you ever add a database.
 
 `npm audit` will flag a moderate advisory in `qs`, pulled in transitively by
 Express 4.x itself — not something this project's code touches directly. No
-action needed for now; the same category of thing is already noted in the
-frontend's `docs/IMPLEMENTATION.md` re: a DOMPurify advisory via
-monaco-editor.
+action needed for now; the same category of thing is already noted in
+`../docs/IMPLEMENTATION.md` re: a DOMPurify advisory via monaco-editor.

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Check, Plus, X } from 'lucide-react';
 import Card from '../components/ui/Card';
@@ -9,9 +9,10 @@ import Select from '../components/ui/Select';
 import Button from '../components/ui/Button';
 import InlineNotice from '../components/ui/InlineNotice';
 import AdminFormSkeleton from '../components/admin/AdminFormSkeleton';
-import { useMockLoading } from '../lib/useMockLoading';
 import { CATEGORIES, DIFFICULTIES } from '../lib/mockChallenges';
-import { ADMIN_CHALLENGES, CHALLENGE_TYPES, emptyFormValues } from '../lib/mockAdminContent';
+import { CHALLENGE_TYPES, emptyFormValues } from '../lib/mockAdminContent';
+import { api } from '../lib/api';
+import { useAuthStore } from '../store/authStore';
 import { slideUp, staggerContainer } from '../lib/motion';
 import { cn } from '../lib/utils';
 
@@ -19,6 +20,10 @@ const CATEGORY_OPTIONS = CATEGORIES.map((c) => ({ value: c.label, label: c.label
 const DIFFICULTY_OPTIONS = DIFFICULTIES.map((d) => ({ value: d, label: d }));
 const TYPE_OPTIONS = CHALLENGE_TYPES.map((t) => ({ value: t, label: t }));
 
+// Client-side mirror of backend/src/utils/challengeValidators.js — the
+// same challenge should never be accepted here and rejected there, or
+// vice versa. Real enforcement is server-side; this just gives
+// instant feedback before a round trip.
 function validate(values) {
   const errors = {};
   if (!values.title.trim()) errors.title = 'Title is required';
@@ -47,20 +52,96 @@ function validate(values) {
   return errors;
 }
 
+// The inverse of backend/src/utils/challengeValidators.js's reshaping
+// — turns a real challenge (nested `content`) back into this form's
+// flat field shape for pre-filling Edit mode.
+function challengeToFormValues(challenge) {
+  const base = emptyFormValues(challenge.type);
+  const shared = {
+    ...base,
+    title: challenge.title,
+    category: challenge.category,
+    difficulty: challenge.difficulty,
+    estimatedTime: `${challenge.timeLimitMinutes} min`,
+    description: challenge.description,
+  };
+  const content = challenge.content || {};
+
+  switch (challenge.type) {
+    case 'MCQ':
+      return {
+        ...shared,
+        options: content.options ?? base.options,
+        correctOption: content.correctOptionIndex ?? base.correctOption,
+      };
+    case 'Output':
+      return { ...shared, codeSnippet: content.codeSnippet ?? '', expectedOutput: content.expectedOutput ?? '' };
+    case 'Debugging':
+      return { ...shared, buggyCode: content.buggyCode ?? '', expectedFix: content.expectedFix ?? '' };
+    case 'SQL':
+      return { ...shared, schema: content.schema ?? '', expectedResult: content.expectedResult ?? '' };
+    case 'Coding':
+    default:
+      return {
+        ...shared,
+        starterCode: content.starterCode ?? '',
+        testCases: content.testCases?.length ? content.testCases : base.testCases,
+      };
+  }
+}
+
 export default function AdminChallengeFormPage() {
   const { challengeId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const token = useAuthStore((s) => s.token);
   const isEditMode = Boolean(challengeId);
-  const loading = useMockLoading(isEditMode ? 500 : 0);
-  const existing = isEditMode ? ADMIN_CHALLENGES.find((c) => c.id === Number(challengeId)) : null;
 
-  const [values, setValues] = useState(() => {
-    const base = emptyFormValues(existing?.type ?? 'Coding');
-    return existing ? { ...base, title: existing.title, category: existing.category, type: existing.type } : base;
-  });
+  const [values, setValues] = useState(() => emptyFormValues('Coding'));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
-  const [notice, setNotice] = useState(null);
+  // Seeded once from router state so a redirect here after creating a
+  // challenge (see handleSubmit) explains itself instead of landing on
+  // a silent edit form.
+  const [notice, setNotice] = useState(() =>
+    location.state?.justCreated ? { message: 'Challenge created.', tone: 'info' } : { message: null, tone: 'info' }
+  );
+  const [loading, setLoading] = useState(isEditMode);
+  const [notFound, setNotFound] = useState(false);
+
+  function showNotice(message, tone = 'info') {
+    setNotice({ message, tone });
+  }
+
+  // Real fetch for Edit mode, replacing the Stage A mock lookup. Note
+  // this will 404 for the Content dashboard's still-mock demo rows
+  // (small numeric ids like "1") — that table isn't wired to real
+  // challenges until Stage C3, so its Edit links pointing at a real
+  // backend correctly can't find anything yet. See the notFound state
+  // below.
+  useEffect(() => {
+    if (!isEditMode) return;
+    let cancelled = false;
+
+    (async () => {
+      setLoading(true);
+      setNotFound(false);
+      try {
+        const data = await api.get(`/api/admin/challenges/${challengeId}`, { token });
+        if (cancelled) return;
+        setValues(challengeToFormValues(data.challenge));
+      } catch {
+        if (cancelled) return;
+        setNotFound(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, challengeId, token]);
 
   function update(field, value) {
     setValues((v) => ({ ...v, [field]: value }));
@@ -96,21 +177,57 @@ export default function AdminChallengeFormPage() {
     setValues((v) => ({ ...v, options: v.options.map((o, i) => (i === index ? value : o)) }));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const nextErrors = validate(values);
     setErrors(nextErrors);
+    showNotice(null);
     if (Object.keys(nextErrors).length > 0) return;
 
     setSaving(true);
-    window.setTimeout(() => {
+    try {
+      if (isEditMode) {
+        await api.patch(`/api/admin/challenges/${challengeId}`, values, { token });
+        showNotice('Challenge saved.');
+      } else {
+        // The Content dashboard is still mock (Stage C3 wires it up),
+        // so it can't show the new challenge yet — landing on its own
+        // real Edit page is the most useful place to go next.
+        const result = await api.post('/api/admin/challenges', values, { token });
+        navigate(`/app/admin/content/${result.challenge.id}/edit`, {
+          replace: true,
+          state: { justCreated: true },
+        });
+        return;
+      }
+    } catch (err) {
+      if (err.fieldErrors) {
+        setErrors((prev) => ({ ...prev, ...err.fieldErrors }));
+      }
+      showNotice(err.message || 'Something went wrong. Please try again.', 'danger');
+    } finally {
       setSaving(false);
-      setNotice("Saving isn't wired up yet — coming soon. Nothing was persisted.");
-    }, 700);
+    }
   }
 
   if (loading) {
     return <AdminFormSkeleton />;
+  }
+
+  if (notFound) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 lg:px-8">
+        <h1 className="text-xl font-semibold text-primary">Challenge not found</h1>
+        <p className="mx-auto mt-2 max-w-md text-secondary">
+          This may be one of the Content dashboard&rsquo;s still-mock demo rows — that table isn&rsquo;t
+          wired to real challenges yet. Challenges created here in the New Challenge form can be
+          found and edited directly at their own URL.
+        </p>
+        <Button className="mt-6" onClick={() => navigate('/app/admin/content')}>
+          Back to content
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -133,8 +250,8 @@ export default function AdminChallengeFormPage() {
         </h1>
         <p className="mt-1 text-secondary">
           {isEditMode
-            ? 'Editing loads what we have for this challenge — some fields start blank in this mock.'
-            : 'Fields change based on the challenge type you pick.'}
+            ? 'Saved as a real draft — not visible to players until Stage C3 publishes it.'
+            : 'Fields change based on the challenge type you pick. Saved as a real draft.'}
         </p>
       </motion.div>
 
@@ -336,7 +453,7 @@ export default function AdminChallengeFormPage() {
           </Card>
         )}
 
-        <InlineNotice message={notice} />
+        <InlineNotice message={notice.message} tone={notice.tone} />
 
         <div className="flex items-center gap-3">
           <Button type="submit" disabled={saving}>

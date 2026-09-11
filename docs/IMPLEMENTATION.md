@@ -5,14 +5,16 @@ what's still unfinished. It reflects the actual code, not a plan.
 
 ## Current state
 
-The frontend is feature-complete end to end for every screen described below. As of Stage B1–B6,
-**authentication and admin user-management are real**: a Node/Express + MongoDB backend now backs
-signup, login, sessions, protected routes, server-enforced admin authorization, and a working
-admin user-management API (block/unblock, promote/demote, remove). Everything else past login —
-dashboard, profile, practice, the challenge player, quick play, rankings, friends, notifications,
-and the admin *content* screens — is still driven entirely by hand-written mock data; those get
-wired up to real endpoints in later stages (C onward). Nothing has been deployed anywhere (see
-"Deployment" below).
+The frontend is feature-complete end to end for every screen described below. As of Stage
+B1–B6 + C1–C2, **authentication, admin user-management, and admin challenge authoring are real**:
+a Node/Express + MongoDB backend now backs signup, login, sessions, protected routes,
+server-enforced admin authorization, admin user-management (block/unblock, promote/demote,
+remove), and admin challenge creation/editing against a generic, type-aware content schema.
+Everything else past login — dashboard, profile, practice, the challenge player, quick play,
+rankings, friends, notifications, and the admin Content *dashboard* (the list/table view, as
+opposed to the New/Edit Challenge form, which is real) — is still driven entirely by hand-written
+mock data; those get wired up to real endpoints in later stages (C3 onward). Nothing has been
+deployed anywhere (see "Deployment" below).
 
 ### What works right now
 
@@ -80,6 +82,23 @@ wired up to real endpoints in later stages (C onward). Nothing has been deployed
   every admin-management endpoint requires an admin to already be logged in). See
   `backend/README.md` for setup and a full endpoint reference with `curl` examples for all of the
   above.
+- A generic challenge content schema (Stage C1) and admin authoring endpoints (Stage C2):
+  `Challenge` (`backend/src/models/Challenge.js`) — one Mongoose model covering all five initial
+  challenge types (MCQ/Output/Coding/Debugging/SQL), with type-specific content validated in
+  `backend/src/utils/challengeValidators.js` rather than five separate schemas (see
+  `DevClash-Bank/docs/CHALLENGE_SCHEMA.md` for the full documented contract and the reasoning).
+  `POST /api/admin/challenges` and `PATCH /api/admin/challenges/:id` (both admin-only, same
+  `requireAuth`+`requireAdmin` pattern as user management) create/update a challenge with full
+  server-side, type-aware validation mirroring the admin form's own client-side checks —
+  `GET /api/admin/challenges/:id` fetches one back for the Edit form to pre-fill. Every challenge
+  is created as `status: 'draft'`; there's no publish workflow yet (Stage C3) and no way for a
+  regular user to ever see one (Stage C4 — there isn't even a non-admin retrieval endpoint yet).
+  `points` and `evaluationConfig` — both part of the schema per C1's spec, neither with an admin
+  UI field yet — get sensible per-type/per-difficulty defaults computed server-side rather than
+  being left unset, so the fields are genuinely usable by later stages (D's evaluators,
+  D6's scoring) without blocking on building that authoring UI now. `DevClash-Bank/samples/`
+  holds one complete, real example per type, each verified against the actual validator (not just
+  hand-checked) before being committed.
 - A Dashboard screen (`/app/dashboard`) built entirely from one local mock-data file: a greeting
   header with a quote, three action cards (Quick Play, Practice, Team Mode) linking into the app
   shell, four animated stat cards (Rating, Win Rate with a circular progress ring, Streak, Total
@@ -145,15 +164,26 @@ wired up to real endpoints in later stages (C onward). Nothing has been deployed
   - **Content** (`/app/admin/content`) — still Stage A mock: draft/review/published/archived status
     counts, a search bar, a status filter, and a table of mock challenges with Edit and Archive
     actions (Archive opens a confirm modal that ends in a "coming soon" notice — nothing is
-    actually archived). Becomes real in Stage C.
-  - **New/Edit Challenge** (`/app/admin/content/new`, `/app/admin/content/:id/edit`) — still Stage
-    A mock: a form whose fields change based on the selected challenge type (MCQ options + correct
-    answer, Output code + expected output, Coding starter code + a dynamic add/remove test-case
-    list, Debugging buggy code + expected fix, SQL schema + expected result), plus shared fields
-    (title, category, difficulty, time, description). Fully validated client-side; Save shows a
-    loading state and a "coming soon" notice rather than persisting anything. Edit mode pre-fills
-    what the mock catalogue actually has (title/category/type) and leaves the rest blank, since the
-    catalogue doesn't store full content per entry. Becomes real in Stage C.
+    actually archived). The dashboard *list/table* becomes real in Stage C3, which is what wires
+    status changes and counts back to it — creating/editing individual challenges is already real,
+    see below.
+  - **New/Edit Challenge** (`/app/admin/content/new`, `/app/admin/content/:id/edit`) —
+    **fully real as of Stage C2.** Same form as Stage A built (fields change based on the selected
+    challenge type: MCQ options + correct answer, Output code + expected output, Coding starter
+    code + a dynamic add/remove test-case list, Debugging buggy code + expected fix, SQL schema +
+    expected result, plus shared title/category/difficulty/estimated-time/description), now wired
+    to `POST /api/admin/challenges` and `PATCH /api/admin/challenges/:id`. Saving creates/updates a
+    real MongoDB document (`status: 'draft'` always, for now — Stage C3 adds the rest of the
+    lifecycle); a duplicate/invalid field comes back as a real inline error, matching the
+    client-side validation field-for-field. Saving a *new* challenge redirects to that challenge's
+    own real Edit URL (since the Content dashboard list can't show it yet — see above) with a
+    "Challenge created." notice. Editing fetches the real challenge from the backend and pre-fills
+    every field, including its type-specific content — a genuine improvement over the Stage A mock,
+    which could only pre-fill title/category/type since the mock catalogue never stored full
+    content per entry. Visiting an edit URL for one of the Content dashboard's still-mock numeric
+    ids (or any id that doesn't exist) shows a clear "Challenge not found" state rather than a
+    broken or silently-empty form. See `DevClash-Bank/docs/CHALLENGE_SCHEMA.md` for the full
+    content contract this saves against.
 - Scroll-triggered and hover animations (Framer Motion), including a shared page-transition
   wrapper used by every route and a separate inner transition for content inside the app shell, so
   navigating between sidebar items animates just the content area, not the whole shell. Numeric
@@ -169,12 +199,13 @@ wired up to real endpoints in later stages (C onward). Nothing has been deployed
   the same.
 - Rating, league, and tagline shown on Profile/Sidebar still come from the Stage A mock
   (`lib/mockUser.js`), since the backend has no concept of them yet (Stage E/K).
-- Dashboard, Profile, Practice, Rankings, Friends, Notifications, and the Admin *Content* screens
-  (but not Users — see above) all show fixed mock data from local files under `src/lib/` — nothing
-  is fetched, and every "loading" skeleton is a timer, not a real request.
-- Editing a profile, and archiving/creating/editing a challenge, still end in a "coming soon"
-  notice rather than persisting anything. (Blocking/promoting/demoting/removing a *user* is real
-  now — see above.)
+- Dashboard, Profile, Practice, Rankings, Friends, Notifications, and the Admin *Content dashboard*
+  (the list/table at `/app/admin/content` — not the New/Edit Challenge form, which is real; not
+  Users, which is also real — see above) all show fixed mock data from local files under
+  `src/lib/` — nothing is fetched, and every "loading" skeleton is a timer, not a real request.
+- Editing a profile, and archiving a challenge, still end in a "coming soon" notice rather than
+  persisting anything. (Creating/editing a *challenge*, and blocking/promoting/demoting/removing a
+  *user*, are both real now — see above.)
 - Every challenge in Practice opens the **same** mock problem body (a Two-Sum-style example) in
   the player — only the title, difficulty, and completion badge come from the catalogue entry that
   was clicked. Building genuinely unique content for every catalogue entry wasn't in scope here.
@@ -201,9 +232,10 @@ wired up to real endpoints in later stages (C onward). Nothing has been deployed
 
 - Rate limiting, account lockout, and password reset (Stage L1) — the rest of Stage B's auth
   hardening (B4–B6) is done.
-- The question bank, matchmaking, code evaluation, real-time features, and everything else in
-  Stages C onward — `backend/` currently only covers auth and admin user-management.
-- `DevClash-Bank/` — empty placeholder, no content (Stage C).
+- The rest of the question bank (Stage C3's publish/review workflow, Stage C4's user-facing
+  retrieval API), matchmaking, code evaluation, real-time features, and everything else in Stages
+  C3 onward — `backend/` currently covers auth, admin user-management, and admin challenge
+  authoring (create/edit only, always as a draft).
 - Deploying either the frontend or the backend anywhere.
 
 ## Deployment
@@ -244,8 +276,8 @@ DevClash/
       pages/           LandingPage, StyleGuidePage, AuthPage, ComingSoonPage, StubPage,
                         DashboardPage, ProfilePage, PracticePage, ChallengePlayerPage,
                         QuickPlayPage, RankingsPage, FriendsPage, NotificationsPage,
-                        AdminContentPage, AdminChallengeFormPage, AdminUsersPage (real data as of
-                        Stage B5)
+                        AdminContentPage (still mock list/table), AdminChallengeFormPage (real
+                        data as of Stage C2), AdminUsersPage (real data as of Stage B5)
       store/           themeStore.js (theme, persisted to localStorage),
                         authStore.js (real session — user/token/status/sessionMessage, Zustand)
       lib/             motion.js (Framer Motion presets), useReducedMotion.js, useCountUp.js,
@@ -255,24 +287,40 @@ DevClash/
                         useCurrentUser.js (real identity + still-mocked gamification fields),
                         mockUser.js, mockDashboard.js, mockProfile.js, mockChallenges.js,
                         mockChallengeDetail.js, mockQuickPlay.js, mockLeaderboard.js,
-                        mockSocial.js, mockNotifications.js, mockAdminContent.js
+                        mockSocial.js, mockNotifications.js, mockAdminContent.js (still backs
+                        the Content dashboard list + CHALLENGE_TYPES/emptyFormValues, which the
+                        real form also uses)
                         (mockAdminUsers.js removed — AdminUsersPage fetches real data as of
                         Stage B5)
       styles/          tokens.css (design tokens), globals.css
-  backend/             Node/Express + MongoDB API — Stage B1–B6 (auth + admin user-management)
+  backend/             Node/Express + MongoDB API — Stage B1–B6 + C1–C2 (auth, admin
+                        user-management, admin challenge authoring)
     src/
       config/          env.js (validated env vars), db.js (MongoDB connection)
-      models/          User.js
+      models/          User.js, Challenge.js (Stage C1's generic content schema)
       controllers/     authController.js, adminUserController.js (list/search/paginate,
-                        block/unblock, promote/demote, remove — with a last-admin guard)
-      routes/          authRoutes.js, adminRoutes.js, healthRoutes.js
+                        block/unblock, promote/demote, remove — with a last-admin guard),
+                        adminChallengeController.js (create/fetch-one/update, Stage C2)
+      routes/          authRoutes.js, adminUserRoutes.js, adminChallengeRoutes.js,
+                        healthRoutes.js — each admin resource mounted at its own non-overlapping
+                        prefix (/api/admin/users, /api/admin/challenges) so one router's
+                        blanket auth middleware can't redundantly run for the other's requests
       middleware/      auth.js (requireAuth), requireAdmin.js, errorHandler.js, notFound.js
       utils/           ApiError.js (statusCode + optional field errors + optional machine
-                        code), asyncHandler.js, token.js (JWT), validators.js
+                        code), asyncHandler.js, token.js (JWT), validators.js (auth),
+                        challengeValidators.js (type-aware challenge validation, mirroring the
+                        admin form field-for-field — also computes the points/evaluationConfig
+                        defaults neither has an authoring UI for yet)
       scripts/         seedAdmin.js (CLI — the only way to create the first admin account)
       app.js           Express app (no side effects — importable without a DB connection)
       server.js        Entrypoint — connects DB, then listens
-  DevClash-Bank/       Empty placeholder — not started
+  DevClash-Bank/       Stage C1's content contract + real sample content (not a separate running
+                        service — see DevClash-Bank/README.md for why)
+    docs/
+      CHALLENGE_SCHEMA.md  The documented content contract: shared fields, type-specific
+                        `content` shapes, the status lifecycle, defaulting policy
+    samples/           One complete, validated example challenge per type (MCQ, Output, Coding,
+                        Debugging, SQL) plus a naming-convention README
   docs/
     IMPLEMENTATION.md  This file
 ```
@@ -379,9 +427,9 @@ turned up and were fixed:
 | `/app/friends`              | App shell — Friends (real mock content)                        |
 | `/app/notifications`        | App shell — Notifications (real mock content)                  |
 | `/app/admin` → `.../content`| Redirects into the admin section's default screen (admin only — see below) |
-| `/app/admin/content`        | App shell — Admin content dashboard (mock content, admin only) |
-| `/app/admin/content/new`    | App shell — New Challenge form (mock, admin only)              |
-| `/app/admin/content/:id/edit` | App shell — Edit Challenge form (mock, admin only)           |
+| `/app/admin/content`        | App shell — Admin content dashboard (mock list/table, admin only) |
+| `/app/admin/content/new`    | App shell — New Challenge form (real data, admin only)         |
+| `/app/admin/content/:id/edit` | App shell — Edit Challenge form (real data, admin only)      |
 | `/app/admin/users`          | App shell — Admin user management (real data/actions, admin only) |
 | `/app/challenge/:id`        | Full-screen challenge player (own layout, no sidebar) — requires a session |
 | `/app/quick-play`           | Full-screen Quick Play flow (own layout, no sidebar) — requires a session |
@@ -403,23 +451,28 @@ bypassed by disabling JavaScript or hitting the API directly, but the backend ca
 ## Known limitations
 
 - No automated tests yet, on either the frontend or the backend.
-- Only auth and admin user-management talk to a real backend — every other screen's data is still
-  hardcoded in components (see "Placeholder / not real yet" above for the full list).
+- Only auth, admin user-management, and admin challenge authoring talk to a real backend — every
+  other screen's data is still hardcoded in components (see "Placeholder / not real yet" above for
+  the full list).
 - No live MongoDB connection was available in the environment this backend was built in (no
   internet access to Atlas, no way to install a local `mongod`), so the backend was verified
   several other ways instead: (1) booting the real Express app without a DB connection and
   exercising routing, validation, JWT/role middleware, and CORS directly against every route
-  (auth *and* admin) — including confirming all six `/api/admin/*` endpoints correctly 401 with no
-  token, before ever touching the database; (2) testing JWT sign/verify, bcrypt hash/compare, and
-  the search-query regex-escaping helper in isolation; (3) running the frontend's actual
-  `authStore` against a mocked `fetch` through 8 signup/login/session-restore scenarios (Stage
-  B1–B3) plus 6 more Stage B6 scenarios (a 401 with a token auto-logs-out with the right message; a
-  403 tagged `ACCOUNT_BLOCKED` does the same; a *plain* 403 — e.g. a non-admin hitting an admin
-  route — correctly does NOT log out; a network failure during session-restore preserves the stored
-  token instead of discarding it; a retry after the network recovers succeeds using that preserved
-  token). An actual signup → login → promote-to-admin → manage-users round trip against a real
-  Atlas cluster still hasn't been run — see the curl commands in `backend/README.md` to do that
-  yourself.
+  (auth, admin users, *and* admin challenges) — including confirming every `/api/admin/*` endpoint
+  correctly 401s with no token, before ever touching the database; (2) testing JWT sign/verify,
+  bcrypt hash/compare, the search-query regex-escaping helper, and (Stage C1–C2) the full
+  challenge validator in isolation — 15 cases covering a valid submission and every field-level
+  rejection for all five types, plus a full form → validate → stored-shape → pre-filled-form
+  round-trip test per type confirming nothing gets lost or corrupted converting between the flat
+  authoring shape and the nested storage shape; (3) running the frontend's actual `authStore`
+  against a mocked `fetch` through 8 signup/login/session-restore scenarios (Stage B1–B3) plus 6
+  more Stage B6 scenarios (a 401 with a token auto-logs-out with the right message; a 403 tagged
+  `ACCOUNT_BLOCKED` does the same; a *plain* 403 — e.g. a non-admin hitting an admin route —
+  correctly does NOT log out; a network failure during session-restore preserves the stored token
+  instead of discarding it; a retry after the network recovers succeeds using that preserved
+  token). An actual signup → login → promote-to-admin → manage-users/create-challenge round trip
+  against a real Atlas cluster still hasn't been run — see the curl commands in
+  `backend/README.md` to do that yourself.
 - Icons and copy are illustrative rather than final production copy.
 - The challenge player's Monaco editor loads from a CDN at runtime (the standard way
   `@monaco-editor/react` works without extra bundler config) — it needs the end user's browser to
@@ -486,6 +539,26 @@ build locally with `npm run preview`. The backend has no build step — `npm sta
   cancellation-safe async IIFE directly in the effect instead — which is React's own documented
   data-fetching pattern and, as a side effect, added protection against race conditions from rapid
   search/page changes that the extracted-function version didn't have.
+- **Backend (Stage C1–C2):** every new/changed source file passes `node --check`. The type-aware
+  validator (`challengeValidators.js`) was unit-tested with 15 cases — a valid submission for all
+  five types, plus targeted rejections (missing title, invalid type/difficulty, an MCQ with a
+  blank option, an MCQ with no correct answer marked, Coding with zero test cases, a test case
+  missing its expected output, an unparseable "estimated time", and a fully empty body) — all
+  produced exactly the expected pass/fail result and, on the valid cases, the exact expected
+  reshaped-for-storage output (spot-checked by printing and reading it). Separately verified the
+  full round trip real usage depends on: for one sample per type, ran the flat authoring payload
+  through the real validator, simulated what the stored/returned document would look like, fed
+  that into the frontend's `challengeToFormValues()` (copied out for this test rather than
+  requiring a JSX-capable runner), and confirmed every field matched the original input exactly —
+  all 5 types passed. Re-booted `app.js` and hit every challenge route with no token (all three
+  correctly 401 before touching the database) plus the existing auth/admin-user routes, confirming
+  no regression from splitting the single `adminRoutes.js` into `adminUserRoutes.js` +
+  `adminChallengeRoutes.js` (done to fix a real inefficiency this stage's routing surfaced: the
+  old single router's blanket `requireAuth`/`requireAdmin` was mounted broadly enough that it ran
+  redundantly for requests it wouldn't ultimately handle — same external `/api/admin/users/*`
+  URLs, just each admin resource now mounted at its own non-overlapping prefix). Finally, every
+  file in `DevClash-Bank/samples/` was validated against the real, imported validator (not just
+  hand-checked for shape) before being committed — see the output logged in this session.
 - `npm run build` completes with no errors on every change described in this document.
 - `npm run lint` (oxlint) reports 0 warnings / 0 errors on the final state.
 - The production build was served locally (`vite preview`) and every route in the table above
